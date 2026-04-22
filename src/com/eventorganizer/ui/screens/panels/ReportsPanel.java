@@ -4,8 +4,12 @@ import com.eventorganizer.exceptions.AppException;
 import com.eventorganizer.models.dto.EventSummaryReport;
 import com.eventorganizer.models.dto.UserActivityReport;
 import com.eventorganizer.models.enums.RSVPStatus;
+import com.eventorganizer.ui.components.EmptyState;
 import com.eventorganizer.ui.components.Toast;
 import com.eventorganizer.ui.controllers.UIController;
+import com.eventorganizer.ui.theme.Radius;
+import com.eventorganizer.ui.theme.SoftBorder;
+import com.eventorganizer.ui.theme.Spacing;
 import com.eventorganizer.ui.theme.Theme;
 import com.eventorganizer.utils.DateUtil;
 
@@ -19,11 +23,12 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.Insets;
 
 public class ReportsPanel extends JPanel {
 
     private final UIController controller;
-    private final JPanel kpiRow = new JPanel(new GridLayout(1, 4, 12, 0));
+    private final JPanel kpiRow = new JPanel(new GridLayout(1, 4, Spacing.M, 0));
     private final JPanel perEventList = new JPanel();
 
     public ReportsPanel(UIController controller) {
@@ -34,14 +39,14 @@ public class ReportsPanel extends JPanel {
         JLabel title = new JLabel("Reports");
         title.setFont(Theme.FONT_DISPLAY);
         title.setForeground(Theme.TEXT_PRIMARY);
-        title.setBorder(BorderFactory.createEmptyBorder(16, 20, 8, 20));
+        title.setBorder(BorderFactory.createEmptyBorder(Spacing.L, Spacing.XL, Spacing.S, Spacing.XL));
 
         kpiRow.setOpaque(false);
-        kpiRow.setBorder(BorderFactory.createEmptyBorder(0, 16, 12, 16));
+        kpiRow.setBorder(BorderFactory.createEmptyBorder(0, Spacing.L, Spacing.M, Spacing.L));
 
         perEventList.setLayout(new BoxLayout(perEventList, BoxLayout.Y_AXIS));
         perEventList.setBackground(Theme.BG_PRIMARY);
-        perEventList.setBorder(BorderFactory.createEmptyBorder(8, 16, 16, 16));
+        perEventList.setBorder(BorderFactory.createEmptyBorder(Spacing.S, Spacing.L, Spacing.L, Spacing.L));
 
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
@@ -66,15 +71,18 @@ public class ReportsPanel extends JPanel {
 
             perEventList.removeAll();
             if (r.getPerEvent().isEmpty()) {
-                JLabel empty = new JLabel("No events created yet.");
-                empty.setForeground(Theme.TEXT_MUTED);
-                empty.setFont(Theme.FONT_BODY);
-                empty.setAlignmentX(Component.LEFT_ALIGNMENT);
-                perEventList.add(empty);
+                EmptyState empty = new EmptyState("◊", "No events yet",
+                    "Create your first event and the breakdown will show up here.");
+                empty.setAlignmentX(Component.CENTER_ALIGNMENT);
+                JPanel wrap = new JPanel(new java.awt.GridBagLayout());
+                wrap.setOpaque(false);
+                wrap.add(empty);
+                wrap.setAlignmentX(Component.LEFT_ALIGNMENT);
+                perEventList.add(wrap);
             } else {
                 for (EventSummaryReport s : r.getPerEvent()) {
                     perEventList.add(eventRow(s));
-                    perEventList.add(Box.createVerticalStrut(6));
+                    perEventList.add(Box.createVerticalStrut(Spacing.S));
                 }
             }
             perEventList.add(Box.createVerticalGlue());
@@ -90,8 +98,10 @@ public class ReportsPanel extends JPanel {
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setBackground(Theme.BG_ELEVATED);
         p.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(3, 0, 0, 0, accent),
-            BorderFactory.createEmptyBorder(12, 14, 12, 14)));
+            SoftBorder.of(Radius.LG, Theme.BORDER, 1),
+            BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(3, 0, 0, 0, accent),
+                BorderFactory.createEmptyBorder(Spacing.M, Spacing.L, Spacing.M, Spacing.L))));
         JLabel v = new JLabel(value);
         v.setFont(Theme.FONT_DISPLAY);
         v.setForeground(Theme.TEXT_PRIMARY);
@@ -105,25 +115,24 @@ public class ReportsPanel extends JPanel {
     private JPanel eventRow(EventSummaryReport s) {
         JPanel row = new JPanel(new BorderLayout());
         row.setBackground(Theme.BG_ELEVATED);
-        row.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Theme.BORDER),
-            BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+        row.setBorder(SoftBorder.of(Radius.MD, Theme.BORDER, 1,
+            new Insets(Spacing.M, Spacing.L, Spacing.M, Spacing.L)));
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 68));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 72));
 
         JPanel left = new JPanel();
         left.setOpaque(false);
         left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
         JLabel name = new JLabel(s.getName());
-        name.setFont(Theme.FONT_BODY);
+        name.setFont(Theme.FONT_BODY_BOLD);
         name.setForeground(Theme.TEXT_PRIMARY);
-        JLabel sub = new JLabel(DateUtil.format(s.getDateTime()) + " - " + s.getStatus());
+        JLabel sub = new JLabel(DateUtil.format(s.getDateTime()) + "  •  " + s.getStatus());
         sub.setFont(Theme.FONT_SMALL);
         sub.setForeground(Theme.TEXT_MUTED);
         left.add(name); left.add(sub);
 
         JLabel counts = new JLabel(String.format(
-            "A:%d  D:%d  M:%d  P:%d (%d invited)",
+            "A:%d  D:%d  M:%d  P:%d  (%d invited)",
             s.getRsvpCounts().getOrDefault(RSVPStatus.ACCEPTED, 0L),
             s.getRsvpCounts().getOrDefault(RSVPStatus.DECLINED, 0L),
             s.getRsvpCounts().getOrDefault(RSVPStatus.MAYBE,    0L),

@@ -2,10 +2,12 @@ package com.eventorganizer.ui.screens.panels;
 
 import com.eventorganizer.exceptions.AppException;
 import com.eventorganizer.models.Event;
+import com.eventorganizer.ui.components.EmptyState;
 import com.eventorganizer.ui.components.EventCard;
 import com.eventorganizer.ui.components.Toast;
 import com.eventorganizer.ui.controllers.UIController;
 import com.eventorganizer.ui.dialogs.EventDetailsDialog;
+import com.eventorganizer.ui.theme.Spacing;
 import com.eventorganizer.ui.theme.Theme;
 
 import javax.swing.BorderFactory;
@@ -14,7 +16,6 @@ import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.SwingConstants;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.util.List;
@@ -34,11 +35,11 @@ public class DiscoverEventsPanel extends JPanel {
         JLabel title = new JLabel("Discover");
         title.setFont(Theme.FONT_DISPLAY);
         title.setForeground(Theme.TEXT_PRIMARY);
-        title.setBorder(BorderFactory.createEmptyBorder(16, 20, 12, 20));
+        title.setBorder(BorderFactory.createEmptyBorder(Spacing.L, Spacing.XL, Spacing.M, Spacing.XL));
 
         listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
         listPanel.setBackground(Theme.BG_PRIMARY);
-        listPanel.setBorder(BorderFactory.createEmptyBorder(8, 16, 16, 16));
+        listPanel.setBorder(BorderFactory.createEmptyBorder(Spacing.S, Spacing.L, Spacing.L, Spacing.L));
 
         add(title, BorderLayout.NORTH);
         add(new JScrollPane(listPanel), BorderLayout.CENTER);
@@ -51,12 +52,14 @@ public class DiscoverEventsPanel extends JPanel {
             listPanel.removeAll();
             List<Event> events = controller.eventsInvitedTo();
             if (events.isEmpty()) {
-                JLabel empty = new JLabel("No pending invitations right now.", SwingConstants.CENTER);
-                empty.setForeground(Theme.TEXT_MUTED);
-                empty.setFont(Theme.FONT_BODY);
-                empty.setAlignmentX(Component.LEFT_ALIGNMENT);
-                empty.setBorder(BorderFactory.createEmptyBorder(40, 0, 40, 0));
-                listPanel.add(empty);
+                EmptyState empty = new EmptyState("✧", "Nothing to discover yet",
+                    "Public events you've been invited to will show up here.");
+                empty.setAlignmentX(Component.CENTER_ALIGNMENT);
+                JPanel wrap = new JPanel(new java.awt.GridBagLayout());
+                wrap.setOpaque(false);
+                wrap.add(empty);
+                wrap.setAlignmentX(Component.LEFT_ALIGNMENT);
+                listPanel.add(wrap);
             } else {
                 for (Event e : events) {
                     EventCard card = new EventCard(e, () ->
@@ -64,7 +67,7 @@ public class DiscoverEventsPanel extends JPanel {
                             () -> { refresh(); onChange.run(); }));
                     card.setAlignmentX(Component.LEFT_ALIGNMENT);
                     listPanel.add(card);
-                    listPanel.add(Box.createVerticalStrut(8));
+                    listPanel.add(Box.createVerticalStrut(Spacing.M));
                 }
             }
             listPanel.add(Box.createVerticalGlue());

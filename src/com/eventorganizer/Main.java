@@ -2,6 +2,7 @@ package com.eventorganizer;
 
 import com.eventorganizer.store.DataStore;
 import com.eventorganizer.ui.App;
+import com.eventorganizer.ui.theme.Theme;
 
 import javax.swing.UIManager;
 
@@ -14,6 +15,8 @@ public class Main {
             try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); }
             catch (Exception ignored) { }
         }
+
+        Theme.applyToUIManager();
 
         DataStore.INSTANCE.seed();
         new App().start();

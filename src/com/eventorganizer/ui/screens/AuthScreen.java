@@ -2,8 +2,12 @@ package com.eventorganizer.ui.screens;
 
 import com.eventorganizer.exceptions.AppException;
 import com.eventorganizer.ui.components.FormField;
+import com.eventorganizer.ui.components.SurfacePanel;
 import com.eventorganizer.ui.components.Toast;
 import com.eventorganizer.ui.controllers.UIController;
+import com.eventorganizer.ui.theme.Radius;
+import com.eventorganizer.ui.theme.SoftBorder;
+import com.eventorganizer.ui.theme.Spacing;
 import com.eventorganizer.ui.theme.Theme;
 import com.eventorganizer.utils.PasswordHasher;
 
@@ -19,49 +23,65 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.function.Consumer;
 
-public class AuthScreen extends JPanel {
+public class AuthScreen extends SurfacePanel {
 
     private final UIController controller;
     private final Consumer<Void> onAuthenticated;
 
     public AuthScreen(UIController controller, Consumer<Void> onAuthenticated) {
+        super(new BorderLayout(), Theme.BG_PRIMARY, true);
         this.controller = controller;
         this.onAuthenticated = onAuthenticated;
-        setLayout(new BorderLayout());
-        setBackground(Theme.BG_PRIMARY);
 
         JLabel title = new JLabel("Event Organizer", SwingConstants.CENTER);
         title.setFont(Theme.FONT_DISPLAY);
         title.setForeground(Theme.TEXT_PRIMARY);
-        title.setBorder(BorderFactory.createEmptyBorder(40, 0, 20, 0));
+
+        JLabel subtitle = new JLabel("Plan, invite, remember.", SwingConstants.CENTER);
+        subtitle.setFont(Theme.FONT_SUBTITLE);
+        subtitle.setForeground(Theme.TEXT_MUTED);
+        subtitle.setBorder(BorderFactory.createEmptyBorder(Spacing.XS, 0, Spacing.XL, 0));
 
         JTabbedPane tabs = new JTabbedPane();
+        tabs.setOpaque(false);
         tabs.addTab("Login", buildLoginPanel());
         tabs.addTab("Register", buildRegisterPanel());
 
-        JPanel center = new JPanel(new BorderLayout());
-        center.setOpaque(false);
-        center.add(tabs, BorderLayout.CENTER);
-        center.setBorder(BorderFactory.createEmptyBorder(0, 80, 80, 80));
-        center.setPreferredSize(new Dimension(560, 440));
+        JPanel card = new JPanel(new BorderLayout());
+        card.setOpaque(true);
+        card.setBackground(Theme.BG_ELEVATED);
+        card.setBorder(SoftBorder.of(Radius.LG, Theme.BORDER, 1,
+            new Insets(Spacing.XXL, Spacing.XXL, Spacing.XXL, Spacing.XXL)));
+        JPanel head = new JPanel();
+        head.setOpaque(false);
+        head.setLayout(new BoxLayout(head, BoxLayout.Y_AXIS));
+        title.setAlignmentX(CENTER_ALIGNMENT);
+        subtitle.setAlignmentX(CENTER_ALIGNMENT);
+        head.add(title);
+        head.add(subtitle);
+        card.add(head, BorderLayout.NORTH);
+        card.add(tabs, BorderLayout.CENTER);
+        card.setPreferredSize(new Dimension(440, 520));
 
-        JPanel outer = new JPanel(new BorderLayout());
-        outer.setOpaque(false);
-        outer.add(title, BorderLayout.NORTH);
-        outer.add(center, BorderLayout.CENTER);
+        JPanel centeringWrap = new JPanel(new GridBagLayout());
+        centeringWrap.setOpaque(false);
+        centeringWrap.add(card, new GridBagConstraints());
 
-        add(outer, BorderLayout.CENTER);
+        add(centeringWrap, BorderLayout.CENTER);
     }
 
     private JPanel buildLoginPanel() {
         JPanel panel = new JPanel();
         panel.setOpaque(false);
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createEmptyBorder(24, 40, 24, 40));
+        panel.setBorder(BorderFactory.createEmptyBorder(Spacing.XL, Spacing.S, Spacing.S, Spacing.S));
 
         JTextField usernameField = new JTextField();
         JPasswordField passwordField = new JPasswordField();
@@ -71,15 +91,15 @@ public class AuthScreen extends JPanel {
 
         JButton loginBtn = new JButton("Log in");
         loginBtn.setMnemonic('L');
+        loginBtn.putClientProperty("JButton.buttonType", "default");
         loginBtn.addActionListener(e -> doLogin(usernameField, passwordField, usernameFF, passwordFF));
 
         panel.add(usernameFF);
         panel.add(passwordFF);
-        panel.add(Box.createVerticalStrut(10));
+        panel.add(Box.createVerticalStrut(Spacing.S));
         panel.add(loginBtn);
         panel.add(Box.createVerticalGlue());
 
-        getRootPane();
         return panel;
     }
 
@@ -87,7 +107,7 @@ public class AuthScreen extends JPanel {
         JPanel panel = new JPanel();
         panel.setOpaque(false);
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createEmptyBorder(24, 40, 24, 40));
+        panel.setBorder(BorderFactory.createEmptyBorder(Spacing.XL, Spacing.S, Spacing.S, Spacing.S));
 
         JTextField usernameField = new JTextField();
         JTextField emailField = new JTextField();
@@ -101,6 +121,7 @@ public class AuthScreen extends JPanel {
 
         JButton registerBtn = new JButton("Create account");
         registerBtn.setMnemonic('C');
+        registerBtn.putClientProperty("JButton.buttonType", "default");
         registerBtn.addActionListener(e ->
             doRegister(usernameField, emailField, pw1, pw2, usernameFF, emailFF, pw1FF, pw2FF));
 
@@ -108,7 +129,7 @@ public class AuthScreen extends JPanel {
         panel.add(emailFF);
         panel.add(pw1FF);
         panel.add(pw2FF);
-        panel.add(Box.createVerticalStrut(10));
+        panel.add(Box.createVerticalStrut(Spacing.S));
         panel.add(registerBtn);
         panel.add(Box.createVerticalGlue());
         return panel;

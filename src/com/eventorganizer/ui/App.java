@@ -1,5 +1,6 @@
 package com.eventorganizer.ui;
 
+import com.eventorganizer.ui.components.SurfacePanel;
 import com.eventorganizer.ui.controllers.UIController;
 import com.eventorganizer.ui.screens.AuthScreen;
 import com.eventorganizer.ui.screens.DashboardScreen;
@@ -36,8 +37,7 @@ public class App {
         frame.getContentPane().setBackground(Theme.BG_PRIMARY);
 
         layout = new CardLayout();
-        root = new JPanel(layout);
-        root.setBackground(Theme.BG_PRIMARY);
+        root = new SurfacePanel(layout, Theme.BG_PRIMARY, true);
 
         AuthScreen auth = new AuthScreen(controller, v -> showDashboard());
         root.add(auth, CARD_AUTH);

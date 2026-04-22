@@ -1,52 +1,50 @@
 package com.eventorganizer.ui.components;
 
 import com.eventorganizer.models.Notification;
+import com.eventorganizer.ui.theme.Spacing;
 import com.eventorganizer.ui.theme.Theme;
 import com.eventorganizer.utils.TimeFormatter;
 
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.ListCellRenderer;
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.Font;
+import java.awt.FlowLayout;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 
 public class NotificationRow extends JPanel implements ListCellRenderer<Notification> {
 
-    private final JLabel unreadDot = new JLabel("*");
-    private final JLabel message   = new JLabel();
-    private final JLabel category  = new JLabel();
-    private final JLabel time      = new JLabel();
+    private final Badge categoryBadge = new Badge("", Badge.Kind.DEFAULT);
+    private final JLabel message = new JLabel();
+    private final JLabel time = new JLabel();
+    private boolean unread;
+    private boolean selected;
 
     public NotificationRow() {
-        setLayout(new BorderLayout(8, 0));
+        setLayout(new BorderLayout(Spacing.M, 0));
+        setOpaque(true);
         setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER),
-            BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+            BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER_SUBTLE),
+            BorderFactory.createEmptyBorder(Spacing.M, Spacing.L + 3, Spacing.M, Spacing.L)));
 
-        unreadDot.setForeground(Theme.ACCENT);
-        unreadDot.setFont(Theme.FONT_TITLE);
-        unreadDot.setPreferredSize(new Dimension(14, 14));
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, Spacing.S, 0));
+        left.setOpaque(false);
+        left.add(categoryBadge);
+        left.add(message);
 
-        JPanel center = new JPanel();
-        center.setOpaque(false);
-        center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
-        category.setFont(Theme.FONT_SMALL);
+        message.setForeground(Theme.TEXT_PRIMARY);
         message.setFont(Theme.FONT_BODY);
-        center.add(category);
-        center.add(message);
 
         time.setFont(Theme.FONT_SMALL);
-        time.setForeground(Theme.TEXT_MUTED);
+        time.setForeground(Theme.TEXT_TERTIARY);
 
-        add(unreadDot, BorderLayout.WEST);
-        add(center,    BorderLayout.CENTER);
-        add(time,      BorderLayout.EAST);
+        add(left, BorderLayout.CENTER);
+        add(time, BorderLayout.EAST);
     }
 
     @Override
@@ -54,27 +52,49 @@ public class NotificationRow extends JPanel implements ListCellRenderer<Notifica
                                                   Notification n, int index,
                                                   boolean isSelected, boolean cellHasFocus) {
         if (n == null) return this;
-        boolean unread = !n.isRead();
-        unreadDot.setText(unread ? "*" : " ");
-        category.setText(n.getCategory());
-        category.setForeground(colorForCategory(n.getCategory()));
+        unread = !n.isRead();
+        selected = isSelected;
+
+        String cat = n.getCategory();
+        categoryBadge.setText(cat);
+        categoryBadge.setKind(kindForCategory(cat));
+
         message.setText(n.getMessage());
-        message.setForeground(Theme.TEXT_PRIMARY);
-        message.setFont(unread ? Theme.FONT_BODY.deriveFont(Font.BOLD) : Theme.FONT_BODY);
+        message.setFont(unread ? Theme.FONT_BODY_BOLD : Theme.FONT_BODY);
+        message.setForeground(unread ? Theme.TEXT_PRIMARY : Theme.TEXT_MUTED);
         time.setText(TimeFormatter.relative(n.getTimestamp()));
-        setBackground(isSelected ? Theme.BG_HOVER : Theme.BG_ELEVATED);
-        setOpaque(true);
         return this;
     }
 
-    private Color colorForCategory(String cat) {
-        if (cat == null) return Theme.TEXT_MUTED;
+    @Override
+    public java.awt.Color getBackground() {
+        if (selected) return Theme.ACCENT_SOFT;
+        return Theme.BG_PRIMARY;
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        if (unread) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            try {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(Theme.ACCENT);
+                g2.fillRect(0, 0, 3, getHeight());
+            } finally {
+                g2.dispose();
+            }
+        }
+    }
+
+    private Badge.Kind kindForCategory(String cat) {
+        if (cat == null) return Badge.Kind.DEFAULT;
         switch (cat) {
-            case "INVITATION":     return Theme.ACCENT;
-            case "RSVP":           return Theme.SUCCESS;
-            case "EVENT UPDATE":   return Theme.WARNING;
-            case "FRIEND REQUEST": return Theme.ACCENT_HOVER;
-            default:               return Theme.TEXT_MUTED;
+            case "INVITATION":     return Badge.Kind.ACCENT;
+            case "RSVP":           return Badge.Kind.SUCCESS;
+            case "EVENT UPDATE":   return Badge.Kind.WARNING;
+            case "FRIEND REQUEST": return Badge.Kind.INFO;
+            default:               return Badge.Kind.DEFAULT;
         }
     }
 }

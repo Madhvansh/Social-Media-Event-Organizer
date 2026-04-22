@@ -2,6 +2,7 @@ package com.eventorganizer.ui.screens;
 
 import com.eventorganizer.ui.components.Sidebar;
 import com.eventorganizer.ui.components.StatusBar;
+import com.eventorganizer.ui.components.SurfacePanel;
 import com.eventorganizer.ui.controllers.UIController;
 import com.eventorganizer.ui.screens.panels.DiscoverEventsPanel;
 import com.eventorganizer.ui.screens.panels.FriendsPanel;
@@ -15,7 +16,7 @@ import javax.swing.JPanel;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 
-public class DashboardScreen extends JPanel {
+public class DashboardScreen extends SurfacePanel {
 
     private final UIController controller;
     @SuppressWarnings("unused")
@@ -32,12 +33,12 @@ public class DashboardScreen extends JPanel {
     private final ProfilePanel        profile;
 
     private final StatusBar statusBar;
+    private final Sidebar sidebar;
 
     public DashboardScreen(UIController controller, Runnable onLogout) {
+        super(new BorderLayout(), Theme.BG_PRIMARY, true);
         this.controller = controller;
         this.onLogout = onLogout;
-        setLayout(new BorderLayout());
-        setBackground(Theme.BG_PRIMARY);
 
         events        = new MyEventsPanel(controller, this::refreshAll);
         discover      = new DiscoverEventsPanel(controller, this::refreshAll);
@@ -58,7 +59,7 @@ public class DashboardScreen extends JPanel {
             () -> show("profile"),
             () -> { controller.logout(); onLogout.run(); });
 
-        Sidebar sidebar = new Sidebar(this::show);
+        sidebar = new Sidebar(controller, this::show);
 
         add(statusBar,  BorderLayout.NORTH);
         add(sidebar,    BorderLayout.WEST);
@@ -77,6 +78,7 @@ public class DashboardScreen extends JPanel {
             default: break;
         }
         statusBar.refresh(controller);
+        sidebar.refresh(controller);
     }
 
     public void onEnter() {
@@ -87,6 +89,7 @@ public class DashboardScreen extends JPanel {
         reports.refresh();
         profile.refresh();
         statusBar.refresh(controller);
+        sidebar.refresh(controller);
         show("events");
     }
 
@@ -97,5 +100,6 @@ public class DashboardScreen extends JPanel {
         notifications.refresh();
         reports.refresh();
         statusBar.refresh(controller);
+        sidebar.refresh(controller);
     }
 }

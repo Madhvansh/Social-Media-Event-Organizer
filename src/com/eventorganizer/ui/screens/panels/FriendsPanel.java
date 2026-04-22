@@ -3,10 +3,14 @@ package com.eventorganizer.ui.screens.panels;
 import com.eventorganizer.exceptions.AppException;
 import com.eventorganizer.models.FriendRequest;
 import com.eventorganizer.models.User;
+import com.eventorganizer.ui.components.AsyncUI;
+import com.eventorganizer.ui.components.EmptyState;
 import com.eventorganizer.ui.components.FormField;
+import com.eventorganizer.ui.components.FriendRow;
 import com.eventorganizer.ui.components.Toast;
 import com.eventorganizer.ui.controllers.UIController;
 import com.eventorganizer.ui.dialogs.ConfirmDialog;
+import com.eventorganizer.ui.theme.Spacing;
 import com.eventorganizer.ui.theme.Theme;
 
 import javax.swing.BorderFactory;
@@ -18,10 +22,8 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
-import javax.swing.SwingConstants;
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.FlowLayout;
 import java.util.List;
 
 public class FriendsPanel extends JPanel {
@@ -29,6 +31,7 @@ public class FriendsPanel extends JPanel {
     private final UIController controller;
     private final JPanel friendsList  = listPanel();
     private final JPanel incomingList = listPanel();
+    private final JTabbedPane tabs = new JTabbedPane();
     private final Runnable onChange;
 
     public FriendsPanel(UIController controller, Runnable onChange) {
@@ -40,9 +43,8 @@ public class FriendsPanel extends JPanel {
         JLabel title = new JLabel("Friends");
         title.setFont(Theme.FONT_DISPLAY);
         title.setForeground(Theme.TEXT_PRIMARY);
-        title.setBorder(BorderFactory.createEmptyBorder(16, 20, 8, 20));
+        title.setBorder(BorderFactory.createEmptyBorder(Spacing.L, Spacing.XL, Spacing.S, Spacing.XL));
 
-        JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("My Friends",        new JScrollPane(friendsList));
         tabs.addTab("Incoming Requests", new JScrollPane(incomingList));
         tabs.addTab("Send Request",      buildSendRequestPanel());
@@ -55,23 +57,28 @@ public class FriendsPanel extends JPanel {
 
     public void refresh() {
         try {
-            renderFriends(controller.friends());
-            renderIncoming(controller.incomingReqs());
+            List<User> friends = controller.friends();
+            List<FriendRequest> incoming = controller.incomingReqs();
+            renderFriends(friends);
+            renderIncoming(incoming);
+            tabs.setTitleAt(0, tabLabel("My Friends", friends.size()));
+            tabs.setTitleAt(1, tabLabel("Incoming Requests", incoming.size()));
         } catch (AppException ex) {
             Toast.error(this, ex.getMessage());
         }
     }
 
+    private static String tabLabel(String name, int count) {
+        return count == 0 ? name : name + " (" + count + ")";
+    }
+
     private void renderFriends(List<User> friends) {
         friendsList.removeAll();
         if (friends.isEmpty()) {
-            friendsList.add(emptyState("No friends yet. Send a request!"));
+            friendsList.add(centered(new EmptyState("♥", "No friends yet",
+                "Head to 'Send Request' to find someone you know.")));
         } else {
             for (User f : friends) {
-                JPanel row = rowPanel();
-                JLabel name = new JLabel(f.getUsername());
-                name.setForeground(Theme.TEXT_PRIMARY);
-                name.setFont(Theme.FONT_BODY);
                 JButton remove = new JButton("Unfriend");
                 remove.addActionListener(e -> {
                     boolean ok = ConfirmDialog.ask(this,
@@ -79,19 +86,17 @@ public class FriendsPanel extends JPanel {
                         "Remove " + f.getUsername() + " from your friends list?",
                         "Unfriend");
                     if (!ok) return;
-                    try {
-                        controller.removeFriend(f.getUsername());
-                        Toast.success(this, "Removed " + f.getUsername());
-                        refresh(); onChange.run();
-                    } catch (AppException ex) { Toast.error(this, ex.getMessage()); }
+                    AsyncUI.run(remove,
+                        () -> controller.removeFriend(f.getUsername()),
+                        () -> {
+                            Toast.success(this, "Removed " + f.getUsername());
+                            refresh(); onChange.run();
+                        },
+                        ex -> Toast.error(this, ex.getMessage()));
                 });
-                row.add(name, BorderLayout.WEST);
-                JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-                right.setOpaque(false);
-                right.add(remove);
-                row.add(right, BorderLayout.EAST);
+                FriendRow row = new FriendRow(f.getUsername(), null).addAction(remove);
                 friendsList.add(row);
-                friendsList.add(Box.createVerticalStrut(6));
+                friendsList.add(Box.createVerticalStrut(Spacing.S));
             }
         }
         friendsList.add(Box.createVerticalGlue());
@@ -102,37 +107,30 @@ public class FriendsPanel extends JPanel {
     private void renderIncoming(List<FriendRequest> requests) {
         incomingList.removeAll();
         if (requests.isEmpty()) {
-            incomingList.add(emptyState("No pending friend requests."));
+            incomingList.add(centered(new EmptyState("✉", "No pending requests",
+                "When someone asks to connect, they'll show up here.")));
         } else {
             for (FriendRequest r : requests) {
                 User sender = controller.lookupUser(r.getSenderId());
                 if (sender == null) continue;
-                JPanel row = rowPanel();
-                JLabel name = new JLabel(sender.getUsername() + " wants to be friends");
-                name.setForeground(Theme.TEXT_PRIMARY);
-                name.setFont(Theme.FONT_BODY);
                 JButton accept = new JButton("Accept");
+                accept.putClientProperty("JButton.buttonType", "default");
                 JButton reject = new JButton("Reject");
-                accept.addActionListener(e -> {
-                    try {
-                        controller.acceptFriendRequest(r.getRequestId());
+                accept.addActionListener(e -> AsyncUI.run(accept,
+                    () -> controller.acceptFriendRequest(r.getRequestId()),
+                    () -> {
                         Toast.success(this, "Friend added.");
                         refresh(); onChange.run();
-                    } catch (AppException ex) { Toast.error(this, ex.getMessage()); }
-                });
-                reject.addActionListener(e -> {
-                    try {
-                        controller.rejectFriendRequest(r.getRequestId());
-                        refresh(); onChange.run();
-                    } catch (AppException ex) { Toast.error(this, ex.getMessage()); }
-                });
-                row.add(name, BorderLayout.WEST);
-                JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-                right.setOpaque(false);
-                right.add(accept); right.add(reject);
-                row.add(right, BorderLayout.EAST);
+                    },
+                    ex -> Toast.error(this, ex.getMessage())));
+                reject.addActionListener(e -> AsyncUI.run(reject,
+                    () -> controller.rejectFriendRequest(r.getRequestId()),
+                    () -> { refresh(); onChange.run(); },
+                    ex -> Toast.error(this, ex.getMessage())));
+                FriendRow row = new FriendRow(sender.getUsername(), "wants to be friends")
+                    .addAction(accept).addAction(reject);
                 incomingList.add(row);
-                incomingList.add(Box.createVerticalStrut(6));
+                incomingList.add(Box.createVerticalStrut(Spacing.S));
             }
         }
         incomingList.add(Box.createVerticalGlue());
@@ -144,55 +142,58 @@ public class FriendsPanel extends JPanel {
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setBackground(Theme.BG_PRIMARY);
-        p.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        p.setBorder(BorderFactory.createEmptyBorder(Spacing.XL, Spacing.XL, Spacing.XL, Spacing.XL));
 
         JTextField usernameField = new JTextField();
         FormField ff = new FormField("Username", usernameField);
+        ff.setAlignmentX(Component.LEFT_ALIGNMENT);
         JButton send = new JButton("Send Request");
         send.setMnemonic('S');
+        send.putClientProperty("JButton.buttonType", "default");
+        send.setAlignmentX(Component.LEFT_ALIGNMENT);
         send.addActionListener(e -> {
-            try {
-                controller.sendFriendRequest(usernameField.getText().trim());
-                Toast.success(this, "Request sent.");
-                usernameField.setText("");
-                ff.clearError();
-                refresh();
-            } catch (AppException ex) {
-                ff.setError(ex.getMessage());
-                Toast.error(this, ex.getMessage());
-            }
+            String target = usernameField.getText().trim();
+            ff.clearError();
+            AsyncUI.run(send,
+                () -> controller.sendFriendRequest(target),
+                () -> {
+                    Toast.success(this, "Request sent.");
+                    usernameField.setText("");
+                    refresh();
+                },
+                ex -> {
+                    ff.setError(ex.getMessage());
+                    Toast.error(this, ex.getMessage());
+                });
         });
+
+        JLabel hint = new JLabel("Enter a username exactly as they typed it when they signed up.");
+        hint.setFont(Theme.FONT_SMALL);
+        hint.setForeground(Theme.TEXT_MUTED);
+        hint.setAlignmentX(Component.LEFT_ALIGNMENT);
+
         p.add(ff);
+        p.add(Box.createVerticalStrut(Spacing.M));
         p.add(send);
+        p.add(Box.createVerticalStrut(Spacing.S));
+        p.add(hint);
         p.add(Box.createVerticalGlue());
         return p;
     }
 
-    private JPanel rowPanel() {
-        JPanel row = new JPanel(new BorderLayout(10, 0));
-        row.setBackground(Theme.BG_ELEVATED);
-        row.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Theme.BORDER),
-            BorderFactory.createEmptyBorder(10, 12, 10, 12)));
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
-        row.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE, 48));
-        return row;
+    private JPanel centered(Component c) {
+        JPanel wrap = new JPanel(new java.awt.GridBagLayout());
+        wrap.setOpaque(false);
+        wrap.add(c);
+        wrap.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return wrap;
     }
 
     private JPanel listPanel() {
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setBackground(Theme.BG_PRIMARY);
-        p.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+        p.setBorder(BorderFactory.createEmptyBorder(Spacing.M, Spacing.L, Spacing.M, Spacing.L));
         return p;
-    }
-
-    private JLabel emptyState(String msg) {
-        JLabel l = new JLabel(msg, SwingConstants.CENTER);
-        l.setForeground(Theme.TEXT_MUTED);
-        l.setFont(Theme.FONT_BODY);
-        l.setAlignmentX(Component.LEFT_ALIGNMENT);
-        l.setBorder(BorderFactory.createEmptyBorder(40, 0, 40, 0));
-        return l;
     }
 }
