@@ -1,0 +1,8 @@
+test/com/eventorganizer/EventServiceTest.java
+test/com/eventorganizer/FriendServiceTest.java
+test/com/eventorganizer/InvitationServiceTest.java
+test/com/eventorganizer/ModelInvariantsTest.java
+test/com/eventorganizer/NotificationServiceTest.java
+test/com/eventorganizer/ReportServiceTest.java
+test/com/eventorganizer/RSVPServiceTest.java
+test/com/eventorganizer/UserServiceTest.java
