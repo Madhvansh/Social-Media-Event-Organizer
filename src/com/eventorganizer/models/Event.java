@@ -1,11 +1,15 @@
 package com.eventorganizer.models;
 
+import com.eventorganizer.exceptions.ErrorCode;
+import com.eventorganizer.exceptions.ValidationException;
 import com.eventorganizer.interfaces.Reportable;
 import com.eventorganizer.models.enums.EventStatus;
 import com.eventorganizer.models.enums.EventType;
 import com.eventorganizer.models.enums.RSVPStatus;
 import com.eventorganizer.store.DataStore;
 import com.eventorganizer.utils.DateUtil;
+import com.eventorganizer.utils.Limits;
+import com.eventorganizer.utils.Validator;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -31,7 +35,7 @@ public abstract class Event implements Reportable {
         this.location = location;
         this.creatorId = creatorId;
         this.status = EventStatus.ACTIVE;
-        this.invitations = new ArrayList<>();
+        this.invitations = Collections.synchronizedList(new ArrayList<>());
     }
 
     public String getEventId()          { return eventId; }
@@ -42,10 +46,56 @@ public abstract class Event implements Reportable {
     public String getCreatorId()        { return creatorId; }
     public EventStatus getStatus()      { return status; }
 
-    public void setName(String name)               { this.name = name; }
-    public void setDescription(String description) { this.description = description; }
-    public void setLocation(String location)       { this.location = location; }
-    public void setDateTime(LocalDateTime dt)      { this.dateTime = dt; }
+    /**
+     * Sets the event name. Non-null, non-blank, capped at {@link Limits#EVENT_NAME_MAX}.
+     * Services are expected to pre-validate and trim; this setter is the entity-level
+     * invariant guard (belt-and-braces).
+     */
+    public void setName(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new ValidationException("Event name is required.", ErrorCode.ERR_VALIDATION);
+        }
+        Validator.requireLength(name, Limits.EVENT_NAME_MAX, "Event name");
+        this.name = name;
+    }
+
+    /** Sets the description. Null is coerced to "". Capped at {@link Limits#EVENT_DESC_MAX}. */
+    public void setDescription(String description) {
+        String v = description == null ? "" : description;
+        Validator.requireLength(v, Limits.EVENT_DESC_MAX, "Event description");
+        this.description = v;
+    }
+
+    /**
+     * Sets the location. Non-null, non-blank, capped at {@link Limits#LOCATION_MAX}.
+     */
+    public void setLocation(String location) {
+        if (location == null || location.trim().isEmpty()) {
+            throw new ValidationException("Event location is required.", ErrorCode.ERR_VALIDATION);
+        }
+        Validator.requireLength(location, Limits.LOCATION_MAX, "Event location");
+        this.location = location;
+    }
+
+    /**
+     * Sets the event date/time. Rejects null and dates beyond {@link Limits#FAR_FUTURE_YEARS}.
+     * Past dates are permitted so {@link com.eventorganizer.services.EventService#editEvent}
+     * (which pre-validates future-dates) and test fixtures still compose; callers
+     * wanting to forbid past dates must check beforehand.
+     */
+    public void setDateTime(LocalDateTime dt) {
+        if (dt == null) {
+            throw new ValidationException("Event date/time is required.", ErrorCode.ERR_VALIDATION);
+        }
+        LocalDateTime cap = LocalDateTime.now(DataStore.INSTANCE.getClock())
+            .plusYears(Limits.FAR_FUTURE_YEARS);
+        if (dt.isAfter(cap)) {
+            throw new ValidationException(
+                "Event date/time cannot be more than " + Limits.FAR_FUTURE_YEARS + " years in the future.",
+                ErrorCode.ERR_VALIDATION);
+        }
+        this.dateTime = dt;
+    }
 
     public abstract EventType getType();
 
@@ -60,8 +110,10 @@ public abstract class Event implements Reportable {
     }
 
     public Invitation getInvitationForUser(String userId) {
-        for (Invitation inv : invitations) {
-            if (inv.getInviteeId().equals(userId)) return inv;
+        synchronized (invitations) {
+            for (Invitation inv : invitations) {
+                if (inv.getInviteeId().equals(userId)) return inv;
+            }
         }
         return null;
     }
@@ -70,8 +122,14 @@ public abstract class Event implements Reportable {
         return getInvitationForUser(userId) != null;
     }
 
+    /**
+     * Returns a snapshot of invitations. Safe to iterate without external synchronization
+     * because the backing list is a synchronized wrapper and the copy is taken atomically.
+     */
     public List<Invitation> getInvitations() {
-        return Collections.unmodifiableList(invitations);
+        synchronized (invitations) {
+            return new ArrayList<>(invitations);
+        }
     }
 
     public boolean isPast() {
@@ -87,7 +145,9 @@ public abstract class Event implements Reportable {
     }
 
     public long countByStatus(RSVPStatus s) {
-        return invitations.stream().filter(i -> i.getStatus() == s).count();
+        synchronized (invitations) {
+            return invitations.stream().filter(i -> i.getStatus() == s).count();
+        }
     }
 
     @Override

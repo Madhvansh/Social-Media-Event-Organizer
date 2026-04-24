@@ -22,6 +22,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -54,7 +55,14 @@ public class AuthScreen extends SurfacePanel {
         tabs.addTab("Login", buildLoginPanel());
         tabs.addTab("Register", buildRegisterPanel());
 
-        JPanel card = new JPanel(new BorderLayout());
+        JPanel card = new JPanel(new BorderLayout()) {
+            @Override public Dimension getPreferredSize() {
+                Dimension d = super.getPreferredSize();
+                return new Dimension(440, d.height);
+            }
+            @Override public Dimension getMinimumSize()  { return getPreferredSize(); }
+            @Override public Dimension getMaximumSize()  { return getPreferredSize(); }
+        };
         card.setOpaque(true);
         card.setBackground(Theme.BG_ELEVATED);
         card.setBorder(SoftBorder.of(Radius.LG, Theme.BORDER, 1,
@@ -68,7 +76,6 @@ public class AuthScreen extends SurfacePanel {
         head.add(subtitle);
         card.add(head, BorderLayout.NORTH);
         card.add(tabs, BorderLayout.CENTER);
-        card.setPreferredSize(new Dimension(440, 520));
 
         JPanel centeringWrap = new JPanel(new GridBagLayout());
         centeringWrap.setOpaque(false);
@@ -92,6 +99,7 @@ public class AuthScreen extends SurfacePanel {
         JButton loginBtn = new JButton("Log in");
         loginBtn.setMnemonic('L');
         loginBtn.putClientProperty("JButton.buttonType", "default");
+        loginBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
         loginBtn.addActionListener(e -> doLogin(usernameField, passwordField, usernameFF, passwordFF));
 
         panel.add(usernameFF);
@@ -122,6 +130,7 @@ public class AuthScreen extends SurfacePanel {
         JButton registerBtn = new JButton("Create account");
         registerBtn.setMnemonic('C');
         registerBtn.putClientProperty("JButton.buttonType", "default");
+        registerBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
         registerBtn.addActionListener(e ->
             doRegister(usernameField, emailField, pw1, pw2, usernameFF, emailFF, pw1FF, pw2FF));
 

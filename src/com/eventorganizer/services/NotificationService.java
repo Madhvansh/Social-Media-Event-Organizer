@@ -24,7 +24,11 @@ public class NotificationService {
     public void push(User recipient, Notification n) {
         if (recipient == null || n == null) return;
         try {
-            recipient.addNotification(n);
+            if (!recipient.addNotification(n)) {
+                LOG.log(Level.WARNING,
+                    "Notification queue full for user " + recipient.getUserId()
+                        + " - oldest unread retained, new notification dropped.");
+            }
         } catch (RuntimeException e) {
             LOG.log(Level.WARNING,
                 "Notification dispatch failed for user " + recipient.getUserId(), e);
@@ -46,7 +50,11 @@ public class NotificationService {
                 existing instanceof EventUpdateNotification
                 && ((EventUpdateNotification) existing).getEventId().equals(n.getEventId())
                 && existing.getTimestamp().isAfter(cutoff));
-            recipient.addNotification(n);
+            if (!recipient.addNotification(n)) {
+                LOG.log(Level.WARNING,
+                    "Notification queue full for user " + recipient.getUserId()
+                        + " - oldest unread retained, new notification dropped.");
+            }
         } catch (RuntimeException e) {
             LOG.log(Level.WARNING,
                 "Notification dispatch failed for user " + recipient.getUserId(), e);

@@ -1,5 +1,6 @@
 package com.eventorganizer;
 
+import com.eventorganizer.exceptions.AuthorizationException;
 import com.eventorganizer.exceptions.InvalidOperationException;
 import com.eventorganizer.exceptions.UnauthorizedException;
 import com.eventorganizer.models.Event;
@@ -72,7 +73,7 @@ class EventServiceTest {
             LocalDateTime.now().plusDays(2), "Home", EventType.PUBLIC);
         users.logout();
         users.login("bob", "bob12345");
-        assertThrows(UnauthorizedException.class, () ->
+        assertThrows(AuthorizationException.class, () ->
             events.editEvent(e.getEventId(), "Hacked", null, null, null));
     }
 

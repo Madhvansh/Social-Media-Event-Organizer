@@ -5,6 +5,7 @@ import com.eventorganizer.models.User;
 import com.eventorganizer.models.dto.BatchInviteResult;
 import com.eventorganizer.ui.components.AsyncUI;
 import com.eventorganizer.ui.components.EmptyState;
+import com.eventorganizer.ui.components.SwingText;
 import com.eventorganizer.ui.components.Toast;
 import com.eventorganizer.ui.controllers.UIController;
 import com.eventorganizer.ui.theme.Spacing;
@@ -40,7 +41,7 @@ public class InviteFriendsDialog {
             if (!event.hasInvited(u.getUserId())) model.addElement(u.getUsername());
         }
 
-        JLabel header = new JLabel("Invite friends to '" + event.getName() + "'");
+        JLabel header = new JLabel(SwingText.plain("Invite friends to '" + event.getName() + "'"));
         header.setFont(Theme.FONT_SUBTITLE);
         header.setForeground(Theme.TEXT_PRIMARY);
         header.setBorder(BorderFactory.createEmptyBorder(Spacing.L, Spacing.L, Spacing.S, Spacing.L));

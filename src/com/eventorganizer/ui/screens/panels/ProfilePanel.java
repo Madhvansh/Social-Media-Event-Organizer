@@ -6,6 +6,7 @@ import com.eventorganizer.ui.components.FormField;
 import com.eventorganizer.ui.components.Toast;
 import com.eventorganizer.ui.controllers.UIController;
 import com.eventorganizer.ui.dialogs.ChangePasswordDialog;
+import com.eventorganizer.ui.theme.Spacing;
 import com.eventorganizer.ui.theme.Theme;
 import com.eventorganizer.utils.DateUtil;
 
@@ -15,10 +16,12 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 
 public class ProfilePanel extends JPanel {
@@ -34,14 +37,20 @@ public class ProfilePanel extends JPanel {
         JLabel title = new JLabel("Profile");
         title.setFont(Theme.FONT_DISPLAY);
         title.setForeground(Theme.TEXT_PRIMARY);
-        title.setBorder(BorderFactory.createEmptyBorder(16, 20, 8, 20));
+        title.setBorder(BorderFactory.createEmptyBorder(Spacing.L, Spacing.XL, Spacing.S, Spacing.XL));
 
         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
         body.setBackground(Theme.BG_PRIMARY);
-        body.setBorder(BorderFactory.createEmptyBorder(8, 20, 20, 20));
+        body.setBorder(BorderFactory.createEmptyBorder(Spacing.S, Spacing.XL, Spacing.XL, Spacing.XL));
+
+        JScrollPane scroll = new JScrollPane(body);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.getViewport().setBackground(Theme.BG_PRIMARY);
 
         add(title, BorderLayout.NORTH);
-        add(body, BorderLayout.CENTER);
+        add(scroll, BorderLayout.CENTER);
 
         refresh();
     }
@@ -56,7 +65,7 @@ public class ProfilePanel extends JPanel {
             body.add(kv("Friends",  String.valueOf(p.getFriendCount())));
             body.add(kv("Events created", String.valueOf(p.getEventsCreated())));
             body.add(kv("Member since", DateUtil.format(p.getMemberSince())));
-            body.add(Box.createVerticalStrut(12));
+            body.add(Box.createVerticalStrut(Spacing.M));
 
             JTextField email = new JTextField(p.getEmail());
             JTextArea bio = new JTextArea(p.getBio() == null ? "" : p.getBio(), 3, 20);
@@ -91,9 +100,10 @@ public class ProfilePanel extends JPanel {
                 Toast.info(this, "Logged out.");
             });
 
-            JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+            JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, Spacing.S, Spacing.S));
             actions.setOpaque(false);
             actions.setAlignmentX(Component.LEFT_ALIGNMENT);
+            actions.setMaximumSize(new Dimension(Integer.MAX_VALUE, actions.getPreferredSize().height));
             actions.add(save);
             actions.add(changePw);
             body.add(actions);
@@ -107,19 +117,19 @@ public class ProfilePanel extends JPanel {
     }
 
     private JPanel kv(String k, String v) {
-        JPanel row = new JPanel(new BorderLayout(10, 0));
+        JPanel row = new JPanel(new BorderLayout(Spacing.M, 0));
         row.setOpaque(false);
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
         JLabel kl = new JLabel(k);
         kl.setForeground(Theme.TEXT_MUTED);
         kl.setFont(Theme.FONT_SMALL);
-        kl.setPreferredSize(new java.awt.Dimension(120, 20));
-        JLabel vl = new JLabel(v == null ? "-" : v);
+        kl.setPreferredSize(new Dimension(120, 20));
+        JLabel vl = new JLabel(v == null ? "-" : com.eventorganizer.ui.components.SwingText.plain(v));
         vl.setForeground(Theme.TEXT_PRIMARY);
         vl.setFont(Theme.FONT_BODY);
         row.add(kl, BorderLayout.WEST);
         row.add(vl, BorderLayout.CENTER);
-        row.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE, 24));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
         return row;
     }
 }

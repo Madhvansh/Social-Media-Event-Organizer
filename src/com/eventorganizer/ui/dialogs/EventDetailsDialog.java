@@ -9,6 +9,7 @@ import com.eventorganizer.models.enums.EventType;
 import com.eventorganizer.models.enums.RSVPStatus;
 import com.eventorganizer.ui.components.AsyncUI;
 import com.eventorganizer.ui.components.Badge;
+import com.eventorganizer.ui.components.SwingText;
 import com.eventorganizer.ui.components.Toast;
 import com.eventorganizer.ui.controllers.UIController;
 import com.eventorganizer.ui.theme.Radius;
@@ -56,7 +57,7 @@ public class EventDetailsDialog extends AbstractAppDialog {
         content.setOpaque(false);
         content.setBorder(BorderFactory.createEmptyBorder(Spacing.XL, Spacing.XL, Spacing.L, Spacing.XL));
 
-        JLabel heading = new JLabel(event.getName());
+        JLabel heading = new JLabel(SwingText.plain(event.getName()));
         heading.setFont(Theme.FONT_TITLE);
         heading.setForeground(Theme.TEXT_PRIMARY);
         heading.setAlignmentX(Component.LEFT_ALIGNMENT);

@@ -59,7 +59,7 @@ public class NotificationRow extends JPanel implements ListCellRenderer<Notifica
         categoryBadge.setText(cat);
         categoryBadge.setKind(kindForCategory(cat));
 
-        message.setText(n.getMessage());
+        message.setText(SwingText.plain(n.getMessage()));
         message.setFont(unread ? Theme.FONT_BODY_BOLD : Theme.FONT_BODY);
         message.setForeground(unread ? Theme.TEXT_PRIMARY : Theme.TEXT_MUTED);
         time.setText(TimeFormatter.relative(n.getTimestamp()));

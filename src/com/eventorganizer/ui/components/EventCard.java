@@ -8,18 +8,17 @@ import com.eventorganizer.ui.theme.SoftBorder;
 import com.eventorganizer.ui.theme.Spacing;
 import com.eventorganizer.ui.theme.Theme;
 import com.eventorganizer.utils.DateUtil;
-
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Insets;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Insets;
 
 public class EventCard extends JPanel {
 
@@ -39,7 +38,7 @@ public class EventCard extends JPanel {
         JPanel titleRow = new JPanel(new FlowLayout(FlowLayout.LEFT, Spacing.S, 0));
         titleRow.setOpaque(false);
         titleRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        JLabel title = new JLabel(event.getName());
+        JLabel title = new JLabel(SwingText.plain(event.getName()));
         title.setFont(Theme.FONT_TITLE);
         title.setForeground(Theme.TEXT_PRIMARY);
         titleRow.add(title);
@@ -47,8 +46,8 @@ public class EventCard extends JPanel {
             event.getType() == EventType.PUBLIC ? Badge.Kind.ACCENT : Badge.Kind.INFO));
         titleRow.add(new Badge(cardStatusLabel(event), cardStatusKind(event)));
 
-        JLabel when = new JLabel(DateUtil.format(event.getDateTime())
-            + "  •  " + event.getLocation());
+        JLabel when = new JLabel(SwingText.plain(DateUtil.format(event.getDateTime())
+            + "  •  " + event.getLocation()));
         when.setFont(Theme.FONT_SMALL);
         when.setForeground(Theme.TEXT_MUTED);
         when.setAlignmentX(Component.LEFT_ALIGNMENT);

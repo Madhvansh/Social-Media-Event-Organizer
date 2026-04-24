@@ -1,14 +1,14 @@
 package com.eventorganizer.ui.theme;
 
-import javax.swing.UIManager;
-import javax.swing.plaf.ColorUIResource;
-import javax.swing.plaf.FontUIResource;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import javax.swing.UIManager;
+import javax.swing.plaf.ColorUIResource;
+import javax.swing.plaf.FontUIResource;
 
 /**
  * Warm-obsidian palette + muted-bronze accent. The single source of truth for

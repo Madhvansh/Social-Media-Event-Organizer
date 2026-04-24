@@ -5,6 +5,7 @@ import com.eventorganizer.models.dto.EventSummaryReport;
 import com.eventorganizer.models.dto.UserActivityReport;
 import com.eventorganizer.models.enums.RSVPStatus;
 import com.eventorganizer.ui.components.EmptyState;
+import com.eventorganizer.ui.components.SwingText;
 import com.eventorganizer.ui.components.Toast;
 import com.eventorganizer.ui.controllers.UIController;
 import com.eventorganizer.ui.theme.Radius;
@@ -123,7 +124,7 @@ public class ReportsPanel extends JPanel {
         JPanel left = new JPanel();
         left.setOpaque(false);
         left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
-        JLabel name = new JLabel(s.getName());
+        JLabel name = new JLabel(SwingText.plain(s.getName()));
         name.setFont(Theme.FONT_BODY_BOLD);
         name.setForeground(Theme.TEXT_PRIMARY);
         JLabel sub = new JLabel(DateUtil.format(s.getDateTime()) + "  •  " + s.getStatus());

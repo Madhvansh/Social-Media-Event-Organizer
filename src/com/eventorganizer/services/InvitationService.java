@@ -1,5 +1,6 @@
 package com.eventorganizer.services;
 
+import com.eventorganizer.exceptions.AuthorizationException;
 import com.eventorganizer.exceptions.DuplicateInvitationException;
 import com.eventorganizer.exceptions.EventNotFoundException;
 import com.eventorganizer.exceptions.InvalidOperationException;
@@ -15,6 +16,8 @@ import com.eventorganizer.models.enums.EventStatus;
 import com.eventorganizer.models.enums.RSVPStatus;
 import com.eventorganizer.store.DataStore;
 import com.eventorganizer.utils.IdGenerator;
+import com.eventorganizer.utils.Limits;
+import com.eventorganizer.utils.Validator;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -26,13 +29,16 @@ public class InvitationService {
     private final NotificationService notifications = new NotificationService();
 
     public Invitation inviteFriend(String eventId, String username) {
+        Validator.requireNonBlank(eventId, "eventId");
+        Validator.requireNonBlank(username, "Username");
+        Validator.requireLength(username, Limits.USERNAME_MAX, "Username");
         User creator = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
 
         Event event = ds.findEventById(eventId)
             .orElseThrow(() -> new EventNotFoundException("No event with id '" + eventId + "'."));
         if (!event.getCreatorId().equals(creator.getUserId())) {
-            throw new UnauthorizedException("Only the event creator may send invitations.");
+            throw new AuthorizationException("Only the event creator may send invitations.");
         }
         if (event.getStatus() == EventStatus.CANCELLED) {
             throw new InvalidOperationException("Cannot invite to a cancelled event.");
@@ -64,8 +70,8 @@ public class InvitationService {
         try {
             ds.indexInvitation(inv);
         } catch (RuntimeException e) {
-            // best-effort rollback of the event-side list
-            event.getInvitations();
+            // Invariant: either both the event list and the index contain `inv`, or neither does.
+            event.removeInvitation(inv);
             ds.unindexInvitation(event.getEventId(), invitee.getUserId());
             throw e;
         }
@@ -106,12 +112,14 @@ public class InvitationService {
     }
 
     public void revoke(String eventId, String inviteeId) {
+        Validator.requireNonBlank(eventId, "eventId");
+        Validator.requireNonBlank(inviteeId, "inviteeId");
         User creator = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
         Event event = ds.findEventById(eventId)
             .orElseThrow(() -> new EventNotFoundException("No event with id '" + eventId + "'."));
         if (!event.getCreatorId().equals(creator.getUserId())) {
-            throw new UnauthorizedException("Only the event creator may revoke invitations.");
+            throw new AuthorizationException("Only the event creator may revoke invitations.");
         }
         Invitation inv = event.getInvitationForUser(inviteeId);
         if (inv == null) {
@@ -133,12 +141,13 @@ public class InvitationService {
     }
 
     public List<Invitation> viewInvitees(String eventId) {
+        Validator.requireNonBlank(eventId, "eventId");
         User creator = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
         Event event = ds.findEventById(eventId)
             .orElseThrow(() -> new EventNotFoundException("No event with id '" + eventId + "'."));
         if (!event.getCreatorId().equals(creator.getUserId())) {
-            throw new UnauthorizedException("Only the event creator may view invitees.");
+            throw new AuthorizationException("Only the event creator may view invitees.");
         }
         return new ArrayList<>(event.getInvitations());
     }

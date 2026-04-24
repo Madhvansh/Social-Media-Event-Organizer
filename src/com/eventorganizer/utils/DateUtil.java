@@ -4,18 +4,19 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Locale;
 
 import com.eventorganizer.exceptions.ErrorCode;
 import com.eventorganizer.exceptions.ValidationException;
 
 public final class DateUtil {
     public static final DateTimeFormatter FORMAT =
-        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm", Locale.ROOT);
 
     private static final List<DateTimeFormatter> ACCEPTED = List.of(
         FORMAT,
-        DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"),
-        DateTimeFormatter.ISO_LOCAL_DATE_TIME
+        DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm", Locale.ROOT),
+        DateTimeFormatter.ISO_LOCAL_DATE_TIME.withLocale(Locale.ROOT)
     );
 
     private DateUtil() {}

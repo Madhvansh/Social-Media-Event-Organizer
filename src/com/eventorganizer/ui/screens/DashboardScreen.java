@@ -11,10 +11,9 @@ import com.eventorganizer.ui.screens.panels.NotificationsPanel;
 import com.eventorganizer.ui.screens.panels.ProfilePanel;
 import com.eventorganizer.ui.screens.panels.ReportsPanel;
 import com.eventorganizer.ui.theme.Theme;
-
-import javax.swing.JPanel;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
+import javax.swing.JPanel;
 
 public class DashboardScreen extends SurfacePanel {
 

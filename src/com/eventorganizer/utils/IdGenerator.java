@@ -16,4 +16,13 @@ public final class IdGenerator {
     public static String nextNotificationId()  { return "N" + notificationCounter.getAndIncrement(); }
     public static String nextInvitationId()    { return "I" + invitationCounter.getAndIncrement(); }
     public static String nextFriendRequestId() { return "F" + friendReqCounter.getAndIncrement(); }
+
+    /** Package-private reset for the JUnit harness. Production code must not call this. */
+    public static void resetForTests() {
+        userCounter.set(1);
+        eventCounter.set(1);
+        notificationCounter.set(1);
+        invitationCounter.set(1);
+        friendReqCounter.set(1);
+    }
 }

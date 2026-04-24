@@ -11,31 +11,35 @@ import com.eventorganizer.services.FriendService;
 import com.eventorganizer.services.InvitationService;
 import com.eventorganizer.services.RSVPService;
 import com.eventorganizer.services.UserService;
+import com.eventorganizer.utils.Normalize;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public enum DataStore {
     INSTANCE;
 
-    private final Map<String, User> usersById = new HashMap<>();
-    private final Map<String, String> usernameIndex = new HashMap<>();   // lowercase username -> userId
-    private final Map<String, String> emailIndex = new HashMap<>();      // lowercase email    -> userId
-    private final Map<String, Event> eventsById = new HashMap<>();
-    private final Map<String, FriendRequest> friendRequestsById = new HashMap<>();
+    private final ConcurrentHashMap<String, User> usersById = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, String> usernameIndex = new ConcurrentHashMap<>();   // normalized username -> userId
+    private final ConcurrentHashMap<String, String> emailIndex = new ConcurrentHashMap<>();      // normalized email    -> userId
+    private final ConcurrentHashMap<String, Event> eventsById = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, FriendRequest> friendRequestsById = new ConcurrentHashMap<>();
     // eventId -> (inviteeId -> Invitation)
-    private final Map<String, Map<String, Invitation>> invitationIndex = new HashMap<>();
+    private final ConcurrentHashMap<String, ConcurrentHashMap<String, Invitation>> invitationIndex = new ConcurrentHashMap<>();
     // min(id1,id2) + "|" + max(id1,id2) -> latest requestId between that pair
-    private final Map<String, String> friendRequestBetweenIndex = new HashMap<>();
+    private final ConcurrentHashMap<String, String> friendRequestBetweenIndex = new ConcurrentHashMap<>();
+    // creatorUserId -> set of eventIds (A8)
+    private final ConcurrentHashMap<String, Set<String>> eventsByCreator = new ConcurrentHashMap<>();
 
-    private User currentUser;
-    private boolean seeded = false;
-    private Clock clock = Clock.systemDefaultZone();
+    private volatile User currentUser;
+    private volatile boolean seeded = false;
+    private volatile Clock clock = Clock.systemDefaultZone();
 
     // --- Clock ---
     public Clock getClock() { return clock; }
@@ -55,9 +59,9 @@ public enum DataStore {
     // --- Users ---
     public void saveUser(User u) {
         usersById.put(u.getUserId(), u);
-        usernameIndex.put(u.getUsername().toLowerCase(), u.getUserId());
+        usernameIndex.put(Normalize.identifier(u.getUsername()), u.getUserId());
         if (u.getEmail() != null) {
-            emailIndex.put(u.getEmail().toLowerCase(), u.getUserId());
+            emailIndex.put(Normalize.identifier(u.getEmail()), u.getUserId());
         }
     }
 
@@ -67,22 +71,22 @@ public enum DataStore {
 
     public Optional<User> findUserByUsername(String username) {
         if (username == null) return Optional.empty();
-        String id = usernameIndex.get(username.toLowerCase());
+        String id = usernameIndex.get(Normalize.identifier(username));
         return id == null ? Optional.empty() : Optional.ofNullable(usersById.get(id));
     }
 
     public Optional<User> findUserByEmail(String email) {
         if (email == null) return Optional.empty();
-        String id = emailIndex.get(email.toLowerCase());
+        String id = emailIndex.get(Normalize.identifier(email));
         return id == null ? Optional.empty() : Optional.ofNullable(usersById.get(id));
     }
 
     public boolean usernameExists(String username) {
-        return username != null && usernameIndex.containsKey(username.toLowerCase());
+        return username != null && usernameIndex.containsKey(Normalize.identifier(username));
     }
 
     public boolean emailExists(String email) {
-        return email != null && emailIndex.containsKey(email.toLowerCase());
+        return email != null && emailIndex.containsKey(Normalize.identifier(email));
     }
 
     public Collection<User> getAllUsers() {
@@ -92,7 +96,12 @@ public enum DataStore {
     // --- Events ---
     public void saveEvent(Event e) {
         eventsById.put(e.getEventId(), e);
-        invitationIndex.computeIfAbsent(e.getEventId(), k -> new HashMap<>());
+        invitationIndex.computeIfAbsent(e.getEventId(), k -> new ConcurrentHashMap<>());
+        if (e.getCreatorId() != null) {
+            eventsByCreator
+                .computeIfAbsent(e.getCreatorId(), k -> ConcurrentHashMap.newKeySet())
+                .add(e.getEventId());
+        }
     }
 
     public Optional<Event> findEventById(String id) {
@@ -103,11 +112,18 @@ public enum DataStore {
         return Collections.unmodifiableCollection(eventsById.values());
     }
 
+    /** O(K) event-id lookup by creator (A8). Returns a snapshot view. */
+    public Set<String> eventIdsForCreator(String creatorId) {
+        if (creatorId == null) return Collections.emptySet();
+        Set<String> ids = eventsByCreator.get(creatorId);
+        return ids == null ? Collections.emptySet() : Collections.unmodifiableSet(ids);
+    }
+
     // --- Invitations (index-only; Event also holds its own list) ---
     public void indexInvitation(Invitation inv) {
         if (inv == null) return;
         invitationIndex
-            .computeIfAbsent(inv.getEventId(), k -> new HashMap<>())
+            .computeIfAbsent(inv.getEventId(), k -> new ConcurrentHashMap<>())
             .put(inv.getInviteeId(), inv);
     }
 
@@ -160,7 +176,7 @@ public enum DataStore {
     public boolean isLoggedIn()        { return currentUser != null; }
 
     /** Package-private: test harness hook. */
-    void resetForTests() {
+    synchronized void resetForTests() {
         usersById.clear();
         usernameIndex.clear();
         emailIndex.clear();
@@ -168,9 +184,11 @@ public enum DataStore {
         friendRequestsById.clear();
         invitationIndex.clear();
         friendRequestBetweenIndex.clear();
+        eventsByCreator.clear();
         currentUser = null;
         seeded = false;
         clock = Clock.systemDefaultZone();
+        com.eventorganizer.utils.IdGenerator.resetForTests();
     }
 
     public synchronized void seed() {

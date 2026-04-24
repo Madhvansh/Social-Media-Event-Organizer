@@ -40,7 +40,7 @@ public class FriendRow extends JPanel {
         JPanel text = new JPanel();
         text.setOpaque(false);
         text.setLayout(new javax.swing.BoxLayout(text, javax.swing.BoxLayout.Y_AXIS));
-        JLabel name = new JLabel(username);
+        JLabel name = new JLabel(SwingText.plain(username));
         name.setFont(Theme.FONT_BODY_BOLD);
         name.setForeground(Theme.TEXT_PRIMARY);
         text.add(name);
@@ -70,8 +70,10 @@ public class FriendRow extends JPanel {
     private static String initials(String name) {
         if (name == null || name.isEmpty()) return "?";
         String n = name.trim();
-        char c = Character.toUpperCase(n.charAt(0));
-        return String.valueOf(c);
+        if (n.isEmpty()) return "?";
+        int cp = n.codePointAt(0);
+        int upper = Character.toUpperCase(cp);
+        return new String(Character.toChars(upper));
     }
 
     private static final class Avatar extends JPanel {

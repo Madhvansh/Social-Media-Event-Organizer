@@ -44,10 +44,15 @@ public final class AsyncUI {
             }
 
             @Override protected void done() {
-                if (source != null) {
+                // If the source component was disposed while we were running (dialog
+                // closed mid-flight), skip every UI callback — otherwise we touch a
+                // disposed widget hierarchy or fire a toast onto a vanished window.
+                boolean alive = source == null || source.isDisplayable();
+                if (source != null && alive) {
                     source.setText(originalText);
                     source.setEnabled(true);
                 }
+                if (!alive) return;
                 if (appErr != null) { onError.accept(appErr); return; }
                 if (runtimeErr != null) {
                     onError.accept(new AppException(
