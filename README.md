@@ -1,8 +1,5 @@
-<p align="center">
-  <a href="./README.md">README</a> •
-
-  <a href="./docs/UML.md">UML Diagrams</a> 
-</p>
+[README](README.md) • [UML Diagrams](UML.md)
+  
 # Event Organizer (Q7 — Social Media Event Organizer)
 
 A Java desktop app that lets users register, manage their friends, create
