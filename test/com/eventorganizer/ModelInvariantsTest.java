@@ -112,6 +112,28 @@ class ModelInvariantsTest {
         assertTrue(u instanceof com.eventorganizer.interfaces.Reportable);
     }
 
+    @Test
+    @DisplayName("Event.removeInvitation uses Invitation.equals (composite)")
+    void invitationRemoveHonorsCompositeEquals() {
+        Event e = new PublicEvent("E1", "A", "", LocalDateTime.now().plusDays(1), "X", "U1");
+        Invitation a = new Invitation("I1", "E1", "U1");
+        e.addInvitation(a);
+        // A second Invitation with a different id but the same (eventId, inviteeId) is
+        // equal() to the one we added; Event.removeInvitation must succeed.
+        Invitation sameIdentity = new Invitation("I2", "E1", "U1");
+        assertTrue(e.removeInvitation(sameIdentity));
+        assertTrue(e.getInvitations().isEmpty());
+    }
+
+    @Test
+    @DisplayName("New passwords are stored with the PBKDF2 prefix")
+    void passwordHashHasPBKDF2Prefix() {
+        UserService us = new UserService();
+        User u = us.register("alice", "a@example.com", "alice123");
+        assertTrue(u.getPasswordHash().startsWith("pbkdf2$"),
+            "password hash must start with 'pbkdf2$' but was: " + u.getPasswordHash());
+    }
+
     private static void assertFinal(Class<?> cls, String fieldName) throws NoSuchFieldException {
         Field f = cls.getDeclaredField(fieldName);
         assertTrue(Modifier.isFinal(f.getModifiers()),

@@ -1,5 +1,6 @@
 package com.eventorganizer.services;
 
+import com.eventorganizer.exceptions.AuthorizationException;
 import com.eventorganizer.exceptions.InvalidOperationException;
 import com.eventorganizer.exceptions.UnauthorizedException;
 import com.eventorganizer.exceptions.UserNotFoundException;
@@ -10,6 +11,7 @@ import com.eventorganizer.models.enums.FriendRequestStatus;
 import com.eventorganizer.store.DataStore;
 import com.eventorganizer.utils.IdGenerator;
 import com.eventorganizer.utils.Limits;
+import com.eventorganizer.utils.Validator;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -22,6 +24,8 @@ public class FriendService {
     private final NotificationService notifications = new NotificationService();
 
     public FriendRequest sendFriendRequest(String targetUsername) {
+        Validator.requireNonBlank(targetUsername, "Username");
+        Validator.requireLength(targetUsername, Limits.USERNAME_MAX, "Username");
         User sender = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
         User target = ds.findUserByUsername(targetUsername)
@@ -77,12 +81,13 @@ public class FriendService {
     }
 
     public void acceptFriendRequest(String requestId) {
+        Validator.requireNonBlank(requestId, "requestId");
         User current = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
         FriendRequest req = ds.findFriendRequestById(requestId)
             .orElseThrow(() -> new InvalidOperationException("Friend request not found."));
         if (!req.getReceiverId().equals(current.getUserId())) {
-            throw new UnauthorizedException("This request was not sent to you.");
+            throw new AuthorizationException("This request was not sent to you.");
         }
         if (req.getStatus() != FriendRequestStatus.PENDING) {
             throw new InvalidOperationException("Request is no longer pending.");
@@ -110,12 +115,13 @@ public class FriendService {
     }
 
     public void rejectFriendRequest(String requestId) {
+        Validator.requireNonBlank(requestId, "requestId");
         User current = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
         FriendRequest req = ds.findFriendRequestById(requestId)
             .orElseThrow(() -> new InvalidOperationException("Friend request not found."));
         if (!req.getReceiverId().equals(current.getUserId())) {
-            throw new UnauthorizedException("This request was not sent to you.");
+            throw new AuthorizationException("This request was not sent to you.");
         }
         if (req.getStatus() != FriendRequestStatus.PENDING) {
             throw new InvalidOperationException("Request is no longer pending.");
@@ -139,12 +145,13 @@ public class FriendService {
     }
 
     public void cancelSentRequest(String requestId) {
+        Validator.requireNonBlank(requestId, "requestId");
         User current = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
         FriendRequest req = ds.findFriendRequestById(requestId)
             .orElseThrow(() -> new InvalidOperationException("Friend request not found."));
         if (!req.getSenderId().equals(current.getUserId())) {
-            throw new UnauthorizedException("This request was not sent by you.");
+            throw new AuthorizationException("This request was not sent by you.");
         }
         if (req.getStatus() != FriendRequestStatus.PENDING) {
             throw new InvalidOperationException("Request is no longer pending.");
@@ -155,7 +162,15 @@ public class FriendService {
             .ifPresent(receiver -> receiver.removeIncomingFriendRequest(requestId));
     }
 
+    /**
+     * Removes a friendship in both directions. <b>Does not</b> auto-revoke outstanding
+     * invitations between the two users — an existing invitation to a private event
+     * remains valid even after the creator un-friends the invitee. This is deliberate:
+     * cancelling an event and removing a friend are separate user intents, and collapsing
+     * them here would silently delete invitations the user may still want to keep.
+     */
     public void removeFriend(String username) {
+        Validator.requireNonBlank(username, "Username");
         User current = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
         User target = ds.findUserByUsername(username)

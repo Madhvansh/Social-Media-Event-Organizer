@@ -5,7 +5,8 @@ import com.eventorganizer.store.DataStore;
 
 import java.time.LocalDateTime;
 
-public class FriendRequest {
+public class FriendRequest implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private final String requestId;
     private final String senderId;
     private final String receiverId;

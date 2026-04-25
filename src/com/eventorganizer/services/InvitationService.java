@@ -1,5 +1,6 @@
 package com.eventorganizer.services;
 
+import com.eventorganizer.exceptions.AuthorizationException;
 import com.eventorganizer.exceptions.DuplicateInvitationException;
 import com.eventorganizer.exceptions.EventNotFoundException;
 import com.eventorganizer.exceptions.InvalidOperationException;
@@ -15,6 +16,8 @@ import com.eventorganizer.models.enums.EventStatus;
 import com.eventorganizer.models.enums.RSVPStatus;
 import com.eventorganizer.store.DataStore;
 import com.eventorganizer.utils.IdGenerator;
+import com.eventorganizer.utils.Limits;
+import com.eventorganizer.utils.Validator;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -26,13 +29,16 @@ public class InvitationService {
     private final NotificationService notifications = new NotificationService();
 
     public Invitation inviteFriend(String eventId, String username) {
+        Validator.requireNonBlank(eventId, "eventId");
+        Validator.requireNonBlank(username, "Username");
+        Validator.requireLength(username, Limits.USERNAME_MAX, "Username");
         User creator = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
 
         Event event = ds.findEventById(eventId)
             .orElseThrow(() -> new EventNotFoundException("No event with id '" + eventId + "'."));
         if (!event.getCreatorId().equals(creator.getUserId())) {
-            throw new UnauthorizedException("Only the event creator may send invitations.");
+            throw new AuthorizationException("Only the event creator may send invitations.");
         }
         if (event.getStatus() == EventStatus.CANCELLED) {
             throw new InvalidOperationException("Cannot invite to a cancelled event.");
@@ -64,8 +70,8 @@ public class InvitationService {
         try {
             ds.indexInvitation(inv);
         } catch (RuntimeException e) {
-            // best-effort rollback of the event-side list
-            event.getInvitations();
+            // Invariant: either both the event list and the index contain `inv`, or neither does.
+            event.removeInvitation(inv);
             ds.unindexInvitation(event.getEventId(), invitee.getUserId());
             throw e;
         }
@@ -106,12 +112,14 @@ public class InvitationService {
     }
 
     public void revoke(String eventId, String inviteeId) {
+        Validator.requireNonBlank(eventId, "eventId");
+        Validator.requireNonBlank(inviteeId, "inviteeId");
         User creator = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
         Event event = ds.findEventById(eventId)
             .orElseThrow(() -> new EventNotFoundException("No event with id '" + eventId + "'."));
         if (!event.getCreatorId().equals(creator.getUserId())) {
-            throw new UnauthorizedException("Only the event creator may revoke invitations.");
+            throw new AuthorizationException("Only the event creator may revoke invitations.");
         }
         Invitation inv = event.getInvitationForUser(inviteeId);
         if (inv == null) {
@@ -133,12 +141,13 @@ public class InvitationService {
     }
 
     public List<Invitation> viewInvitees(String eventId) {
+        Validator.requireNonBlank(eventId, "eventId");
         User creator = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
         Event event = ds.findEventById(eventId)
             .orElseThrow(() -> new EventNotFoundException("No event with id '" + eventId + "'."));
         if (!event.getCreatorId().equals(creator.getUserId())) {
-            throw new UnauthorizedException("Only the event creator may view invitees.");
+            throw new AuthorizationException("Only the event creator may view invitees.");
         }
         return new ArrayList<>(event.getInvitations());
     }
@@ -155,6 +164,55 @@ public class InvitationService {
             }
         }
         return result;
+    }
+
+    /**
+     * Self-invite to a public event. Lets the current user attach an invitation
+     * to a {@link com.eventorganizer.models.PublicEvent} they were not
+     * explicitly invited to, then they can RSVP normally. No-op if already
+     * invited. Throws on private events, on past/cancelled events, on
+     * inviting yourself to your own event.
+     */
+    public Invitation joinPublicEvent(String eventId) {
+        Validator.requireNonBlank(eventId, "eventId");
+        User user = requireLoggedIn();
+        DataStore ds = DataStore.INSTANCE;
+        Event event = ds.findEventById(eventId)
+            .orElseThrow(() -> new EventNotFoundException("No event with id '" + eventId + "'."));
+        if (event.getCreatorId().equals(user.getUserId())) {
+            throw new InvalidOperationException("You're the creator — no need to RSVP.");
+        }
+        if (!(event instanceof com.eventorganizer.models.PublicEvent)) {
+            throw new InvalidOperationException(
+                "You can only self-join public events. Private events require an invitation.");
+        }
+        if (event.getStatus() == EventStatus.CANCELLED) {
+            throw new InvalidOperationException("This event has been cancelled.");
+        }
+        if (event.isPast()) {
+            throw new InvalidOperationException("This event is in the past.");
+        }
+        if (event.hasInvited(user.getUserId())) {
+            return event.getInvitationForUser(user.getUserId());
+        }
+        Invitation inv = new Invitation(
+            IdGenerator.nextInvitationId(), event.getEventId(), user.getUserId());
+        event.addInvitation(inv);
+        try {
+            ds.indexInvitation(inv);
+        } catch (RuntimeException e) {
+            event.removeInvitation(inv);
+            ds.unindexInvitation(event.getEventId(), user.getUserId());
+            throw e;
+        }
+        // Notify the creator so they know someone joined.
+        ds.findUserById(event.getCreatorId()).ifPresent(creator ->
+            notifications.push(creator, new InvitationNotification(
+                IdGenerator.nextNotificationId(),
+                creator.getUserId(),
+                user.getUsername() + " joined '" + event.getName() + "'.",
+                event.getEventId())));
+        return inv;
     }
 
     private User requireLoggedIn() {

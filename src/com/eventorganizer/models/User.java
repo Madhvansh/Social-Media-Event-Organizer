@@ -9,12 +9,15 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class User implements Reportable {
+public class User implements Reportable, java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private final String userId;
     private final String username;
     private String email;
@@ -23,7 +26,7 @@ public class User implements Reportable {
     private String bio;
     private final LocalDateTime createdAt;
 
-    private final List<String> friendIds;
+    private final Set<String> friendIds;
     private final List<String> incomingFriendRequestIds;
     private final List<String> outgoingFriendRequestIds;
     private final List<Notification> notifications;
@@ -36,10 +39,10 @@ public class User implements Reportable {
         this.salt = salt == null ? new byte[0] : salt.clone();
         this.bio = "";
         this.createdAt = LocalDateTime.now(DataStore.INSTANCE.getClock());
-        this.friendIds = new ArrayList<>();
+        this.friendIds = new LinkedHashSet<>();
         this.incomingFriendRequestIds = new ArrayList<>();
         this.outgoingFriendRequestIds = new ArrayList<>();
-        this.notifications = new ArrayList<>();
+        this.notifications = Collections.synchronizedList(new ArrayList<>());
     }
 
     public String getUserId()            { return userId; }
@@ -69,7 +72,7 @@ public class User implements Reportable {
 
     public void addFriend(User other) {
         if (other == null || other.userId.equals(this.userId)) return;
-        if (!friendIds.contains(other.userId)) friendIds.add(other.userId);
+        friendIds.add(other.userId);
     }
 
     public void removeFriend(String otherUserId) {
@@ -87,7 +90,7 @@ public class User implements Reportable {
     }
 
     public List<String> getFriendIds() {
-        return Collections.unmodifiableList(friendIds);
+        return new ArrayList<>(friendIds);
     }
 
     public void addIncomingFriendRequest(String requestId) {
@@ -99,7 +102,7 @@ public class User implements Reportable {
     }
 
     public List<String> getIncomingFriendRequestIds() {
-        return Collections.unmodifiableList(incomingFriendRequestIds);
+        return new ArrayList<>(incomingFriendRequestIds);
     }
 
     public void addOutgoingFriendRequest(String requestId) {
@@ -111,50 +114,62 @@ public class User implements Reportable {
     }
 
     public List<String> getOutgoingFriendRequestIds() {
-        return Collections.unmodifiableList(outgoingFriendRequestIds);
+        return new ArrayList<>(outgoingFriendRequestIds);
     }
 
-    public void addNotification(Notification n) {
-        if (n == null) return;
-        notifications.add(n);
-        enforceNotificationCap();
+    /**
+     * Adds a notification, evicting the oldest read notification first if the user is at the cap.
+     * Returns {@code false} (without modifying state) when the user is at the cap and every
+     * existing notification is still unread — unread items are never silently dropped.
+     */
+    public boolean addNotification(Notification n) {
+        if (n == null) return false;
+        int cap = Limits.NOTIFICATIONS_PER_USER_MAX;
+        synchronized (notifications) {
+            if (notifications.size() >= cap) {
+                int evictIdx = -1;
+                for (int i = 0; i < notifications.size(); i++) {
+                    if (notifications.get(i).isRead()) { evictIdx = i; break; }
+                }
+                if (evictIdx < 0) return false;
+                notifications.remove(evictIdx);
+            }
+            notifications.add(n);
+            return true;
+        }
     }
 
     /** Removes every notification matching the predicate; returns number removed. */
     public int removeNotificationsMatching(Predicate<Notification> test) {
         if (test == null) return 0;
         int removed = 0;
-        Iterator<Notification> it = notifications.iterator();
-        while (it.hasNext()) {
-            if (test.test(it.next())) { it.remove(); removed++; }
+        synchronized (notifications) {
+            Iterator<Notification> it = notifications.iterator();
+            while (it.hasNext()) {
+                if (test.test(it.next())) { it.remove(); removed++; }
+            }
         }
         return removed;
     }
 
     public void markAllNotificationsAsRead() {
-        for (Notification n : notifications) n.markAsRead();
-    }
-
-    private void enforceNotificationCap() {
-        int cap = Limits.NOTIFICATIONS_PER_USER_MAX;
-        while (notifications.size() > cap) {
-            int evictIdx = -1;
-            for (int i = 0; i < notifications.size(); i++) {
-                if (notifications.get(i).isRead()) { evictIdx = i; break; }
-            }
-            if (evictIdx < 0) evictIdx = 0;
-            notifications.remove(evictIdx);
+        synchronized (notifications) {
+            for (Notification n : notifications) n.markAsRead();
         }
     }
 
     public List<Notification> getNotifications() {
-        return Collections.unmodifiableList(notifications);
+        synchronized (notifications) {
+            return new ArrayList<>(notifications);
+        }
     }
 
     public List<Notification> getUnreadNotifications() {
-        return notifications.stream()
-            .filter(n -> !n.isRead())
-            .collect(Collectors.toList());
+        synchronized (notifications) {
+            return notifications.stream()
+                .filter(n -> !n.isRead())
+                .collect(Collectors.toList());
+        }
     }
 
     @Override

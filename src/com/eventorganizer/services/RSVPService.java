@@ -11,6 +11,7 @@ import com.eventorganizer.models.User;
 import com.eventorganizer.models.enums.RSVPStatus;
 import com.eventorganizer.store.DataStore;
 import com.eventorganizer.utils.IdGenerator;
+import com.eventorganizer.utils.Validator;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -22,6 +23,7 @@ public class RSVPService {
     private final NotificationService notifications = new NotificationService();
 
     public void respond(String eventId, RSVPStatus newStatus) {
+        Validator.requireNonBlank(eventId, "eventId");
         User current = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
         Event event = ds.findEventById(eventId)
@@ -43,6 +45,7 @@ public class RSVPService {
     }
 
     public List<Invitation> getInvitationsFor(String eventId) {
+        Validator.requireNonBlank(eventId, "eventId");
         User current = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
         Event event = ds.findEventById(eventId)
@@ -54,12 +57,13 @@ public class RSVPService {
     }
 
     public Map<RSVPStatus, Long> viewRSVPSummary(String eventId) {
+        Validator.requireNonBlank(eventId, "eventId");
         User current = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
         Event event = ds.findEventById(eventId)
             .orElseThrow(() -> new EventNotFoundException("No event with id '" + eventId + "'."));
         if (!event.getCreatorId().equals(current.getUserId())) {
-            throw new UnauthorizedException("Only the event creator may view RSVP summary.");
+            throw new AuthorizationException("Only the event creator may view RSVP summary.");
         }
         Map<RSVPStatus, Long> counts = new EnumMap<>(RSVPStatus.class);
         for (RSVPStatus s : RSVPStatus.values()) counts.put(s, 0L);

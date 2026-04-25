@@ -77,6 +77,22 @@ class NotificationServiceTest {
     }
 
     @Test
+    @DisplayName("notification cap rejects new entry when all existing are unread")
+    void notificationCapRejectsWhenAllUnread() {
+        int cap = Limits.NOTIFICATIONS_PER_USER_MAX;
+        for (int i = 0; i < cap; i++) {
+            assertTrue(alice.addNotification(new InvitationNotification(
+                IdGenerator.nextNotificationId(), alice.getUserId(), "u" + i, "evt-" + i)));
+        }
+        assertEquals(cap, alice.getNotifications().size());
+        // All unread; next add must be rejected, the existing unread queue preserved.
+        boolean accepted = alice.addNotification(new InvitationNotification(
+            IdGenerator.nextNotificationId(), alice.getUserId(), "overflow", "evt-overflow"));
+        assertFalse(accepted);
+        assertEquals(cap, alice.getNotifications().size());
+    }
+
+    @Test
     @DisplayName("pushCoalesced replaces a recent same-event update")
     void coalesceRecent() {
         EventUpdateNotification first = new EventUpdateNotification(

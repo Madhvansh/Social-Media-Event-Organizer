@@ -1,5 +1,6 @@
 package com.eventorganizer.services;
 
+import com.eventorganizer.exceptions.AuthorizationException;
 import com.eventorganizer.exceptions.EventNotFoundException;
 import com.eventorganizer.exceptions.InvalidOperationException;
 import com.eventorganizer.exceptions.UnauthorizedException;
@@ -57,6 +58,9 @@ public class EventService {
 
         if (!Validator.isNonEmpty(name))     throw new InvalidOperationException("Event name is required.");
         if (!Validator.isNonEmpty(location)) throw new InvalidOperationException("Location is required.");
+        Validator.requireLength(name, Limits.EVENT_NAME_MAX, "Event name");
+        Validator.requireLength(description, Limits.EVENT_DESC_MAX, "Event description");
+        Validator.requireLength(location, Limits.LOCATION_MAX, "Event location");
         if (!Validator.isFutureDate(dateTime)) {
             throw new InvalidOperationException("Event date/time must be in the future.");
         }
@@ -83,10 +87,11 @@ public class EventService {
 
     public Event editEvent(String eventId, String newName, String newDescription,
                            LocalDateTime newDateTime, String newLocation) {
+        Validator.requireNonBlank(eventId, "eventId");
         User current = requireLoggedIn();
         Event e = requireEvent(eventId);
         if (!e.getCreatorId().equals(current.getUserId())) {
-            throw new UnauthorizedException("Only the event creator may edit this event.");
+            throw new AuthorizationException("Only the event creator may edit this event.");
         }
         if (e.getStatus() == EventStatus.CANCELLED) {
             throw new InvalidOperationException("Cannot edit a cancelled event.");
@@ -95,9 +100,18 @@ public class EventService {
             throw new InvalidOperationException("Cannot edit a past event.");
         }
 
-        if (newName != null && Validator.isNonEmpty(newName))             e.setName(newName.trim());
-        if (newDescription != null)                                       e.setDescription(newDescription.trim());
-        if (newLocation != null && Validator.isNonEmpty(newLocation))     e.setLocation(newLocation.trim());
+        if (newName != null && Validator.isNonEmpty(newName)) {
+            Validator.requireLength(newName, Limits.EVENT_NAME_MAX, "Event name");
+            e.setName(newName.trim());
+        }
+        if (newDescription != null) {
+            Validator.requireLength(newDescription, Limits.EVENT_DESC_MAX, "Event description");
+            e.setDescription(newDescription.trim());
+        }
+        if (newLocation != null && Validator.isNonEmpty(newLocation)) {
+            Validator.requireLength(newLocation, Limits.LOCATION_MAX, "Event location");
+            e.setLocation(newLocation.trim());
+        }
         if (newDateTime != null) {
             if (!Validator.isFutureDate(newDateTime)) {
                 throw new InvalidOperationException("New event date/time must be in the future.");
@@ -123,10 +137,11 @@ public class EventService {
      * Already-cancelled events are a silent no-op (idempotent).
      */
     public void cancelEvent(String eventId, String reason) {
+        Validator.requireNonBlank(eventId, "eventId");
         User current = requireLoggedIn();
         Event e = requireEvent(eventId);
         if (!e.getCreatorId().equals(current.getUserId())) {
-            throw new UnauthorizedException("Only the event creator may cancel this event.");
+            throw new AuthorizationException("Only the event creator may cancel this event.");
         }
         if (e.getStatus() == EventStatus.CANCELLED) {
             return;
@@ -140,14 +155,16 @@ public class EventService {
     }
 
     public Event viewEventDetails(String eventId) {
+        Validator.requireNonBlank(eventId, "eventId");
         return requireEvent(eventId);
     }
 
     public List<Event> viewMyEvents() {
         User current = requireLoggedIn();
+        DataStore ds = DataStore.INSTANCE;
         List<Event> mine = new ArrayList<>();
-        for (Event e : DataStore.INSTANCE.getAllEvents()) {
-            if (e.getCreatorId().equals(current.getUserId())) mine.add(e);
+        for (String eid : ds.eventIdsForCreator(current.getUserId())) {
+            ds.findEventById(eid).ifPresent(mine::add);
         }
         mine.sort(UPCOMING_ASC_BY_NAME);
         return mine;
@@ -155,9 +172,10 @@ public class EventService {
 
     public List<Event> viewUpcoming() {
         User current = requireLoggedIn();
+        DataStore ds = DataStore.INSTANCE;
         List<Event> list = new ArrayList<>();
-        for (Event e : DataStore.INSTANCE.getAllEvents()) {
-            if (e.getCreatorId().equals(current.getUserId()) && e.isUpcoming()) list.add(e);
+        for (String eid : ds.eventIdsForCreator(current.getUserId())) {
+            ds.findEventById(eid).filter(Event::isUpcoming).ifPresent(list::add);
         }
         list.sort(UPCOMING_ASC_BY_NAME);
         return list;
@@ -165,11 +183,32 @@ public class EventService {
 
     public List<Event> viewPast() {
         User current = requireLoggedIn();
+        DataStore ds = DataStore.INSTANCE;
         List<Event> list = new ArrayList<>();
-        for (Event e : DataStore.INSTANCE.getAllEvents()) {
-            if (e.getCreatorId().equals(current.getUserId()) && e.isPast()) list.add(e);
+        for (String eid : ds.eventIdsForCreator(current.getUserId())) {
+            ds.findEventById(eid).filter(Event::isPast).ifPresent(list::add);
         }
         list.sort(PAST_DESC_BY_NAME);
+        return list;
+    }
+
+    /**
+     * Public events browsable by the current user — every active, upcoming
+     * {@link PublicEvent} they did not create. Per the Q7 spec, public events
+     * are visible to all users (not just those explicitly invited).
+     */
+    public List<Event> discoverPublicEvents() {
+        User current = requireLoggedIn();
+        DataStore ds = DataStore.INSTANCE;
+        List<Event> list = new ArrayList<>();
+        for (Event e : ds.getAllEvents()) {
+            if (!(e instanceof PublicEvent)) continue;
+            if (e.getCreatorId().equals(current.getUserId())) continue;
+            if (e.getStatus() == EventStatus.CANCELLED) continue;
+            if (e.isPast()) continue;
+            list.add(e);
+        }
+        list.sort(UPCOMING_ASC_BY_NAME);
         return list;
     }
 

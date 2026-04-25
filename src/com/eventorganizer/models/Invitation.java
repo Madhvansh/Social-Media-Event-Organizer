@@ -9,7 +9,8 @@ import com.eventorganizer.store.DataStore;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-public class Invitation {
+public class Invitation implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private final String invitationId;
     private final String eventId;
     private final String inviteeId;

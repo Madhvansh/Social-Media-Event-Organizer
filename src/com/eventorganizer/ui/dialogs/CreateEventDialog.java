@@ -1,43 +1,50 @@
 package com.eventorganizer.ui.dialogs;
 
-import com.eventorganizer.exceptions.AppException;
 import com.eventorganizer.models.enums.EventType;
 import com.eventorganizer.services.EventService.CreateEventResult;
+import com.eventorganizer.ui.components.AsyncUI;
 import com.eventorganizer.ui.components.FormField;
+import com.eventorganizer.ui.components.SegmentedControl;
 import com.eventorganizer.ui.components.Toast;
 import com.eventorganizer.ui.controllers.UIController;
+import com.eventorganizer.ui.laf.AuroraButton;
+import com.eventorganizer.ui.laf.AuroraTextField;
+import com.eventorganizer.ui.theme.Spacing;
 import com.eventorganizer.ui.theme.Theme;
+import com.eventorganizer.ui.theme.Typography;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
-import javax.swing.ButtonGroup;
-import javax.swing.JButton;
-import javax.swing.JDialog;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTextArea;
-import javax.swing.JTextField;
 import javax.swing.SpinnerDateModel;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.FlowLayout;
-import java.awt.Window;
+import java.awt.GridLayout;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Calendar;
 import java.util.Date;
 
-public class CreateEventDialog {
+/**
+ * Create event dialog — two-column form. Left: name + description. Right:
+ * date/time spinner + Public/Private SegmentedControl + location.
+ */
+public class CreateEventDialog extends AbstractAppDialog {
 
     public static void show(Component parent, UIController controller, Runnable onCreated) {
-        Window owner = parent == null ? null : javax.swing.SwingUtilities.getWindowAncestor(parent);
-        JDialog d = new JDialog(owner, "Create Event", JDialog.ModalityType.APPLICATION_MODAL);
-        d.setLayout(new BorderLayout());
+        new CreateEventDialog(parent, controller, onCreated).showCentered(parent);
+    }
 
-        JTextField name = new JTextField();
-        JTextArea desc  = new JTextArea(4, 20);
+    private CreateEventDialog(Component parent, UIController controller, Runnable onCreated) {
+        super(parent, "Create event", 720, 600);
+
+        AuroraTextField name = new AuroraTextField("Event name");
+        JTextArea desc  = new JTextArea(6, 28);
         desc.setLineWrap(true);
         desc.setWrapStyleWord(true);
         JScrollPane descScroll = new JScrollPane(desc);
@@ -48,62 +55,96 @@ public class CreateEventDialog {
         JSpinner date = new JSpinner(dateModel);
         date.setEditor(new JSpinner.DateEditor(date, "yyyy-MM-dd HH:mm"));
 
-        JTextField location = new JTextField();
+        AuroraTextField location = new AuroraTextField("Location");
 
-        JRadioButton pub = new JRadioButton("Public", true);
-        JRadioButton priv = new JRadioButton("Private");
-        ButtonGroup grp = new ButtonGroup();
-        grp.add(pub); grp.add(priv);
-        JPanel typeRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        typeRow.setOpaque(false);
-        typeRow.add(pub); typeRow.add(priv);
+        SegmentedControl typeToggle = new SegmentedControl();
+        typeToggle.addSegment("Public");
+        typeToggle.addSegment("Private");
 
-        JPanel form = new JPanel();
-        form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-        form.setBackground(Theme.BG_PRIMARY);
-        form.setBorder(BorderFactory.createEmptyBorder(16, 20, 12, 20));
-        form.add(new FormField("Name", name));
-        form.add(new FormField("Description", descScroll));
-        form.add(new FormField("Date/Time", date));
-        form.add(new FormField("Location", location));
-        form.add(new FormField("Type", typeRow));
+        FormField nameFF = new FormField("EVENT NAME", name);
+        FormField descFF = new FormField("DESCRIPTION", descScroll);
+        FormField dateFF = new FormField("DATE & TIME", date);
+        FormField locFF  = new FormField("LOCATION", location);
 
-        JButton cancel = new JButton("Cancel");
-        cancel.addActionListener(e -> d.dispose());
-        JButton create = new JButton("Create");
+        // Left column: name + description
+        JPanel left = new JPanel();
+        left.setOpaque(false);
+        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
+        left.add(nameFF);
+        left.add(descFF);
+
+        // Right column: date + type + location + tip
+        JPanel right = new JPanel();
+        right.setOpaque(false);
+        right.setLayout(new BoxLayout(right, BoxLayout.Y_AXIS));
+        right.add(dateFF);
+
+        JPanel typeSlot = new JPanel(new BorderLayout());
+        typeSlot.setOpaque(false);
+        typeSlot.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel typeLabel = new JLabel("EVENT TYPE");
+        typeLabel.setFont(Typography.LABEL);
+        typeLabel.setForeground(Theme.TEXT_SECONDARY);
+        typeLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, Spacing.XS, 0));
+        typeSlot.add(typeLabel, BorderLayout.NORTH);
+        JPanel toggleWrap = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        toggleWrap.setOpaque(false);
+        toggleWrap.add(typeToggle);
+        typeSlot.add(toggleWrap, BorderLayout.CENTER);
+        typeSlot.setBorder(BorderFactory.createEmptyBorder(0, 0, Spacing.M, 0));
+        right.add(typeSlot);
+
+        right.add(locFF);
+
+        JLabel tip = new JLabel("Public events let any user RSVP. Private events are friends-only.");
+        tip.setFont(Typography.SMALL);
+        tip.setForeground(Theme.TEXT_TERTIARY);
+        tip.setAlignmentX(Component.LEFT_ALIGNMENT);
+        tip.setBorder(BorderFactory.createEmptyBorder(Spacing.XS, 0, 0, 0));
+        right.add(tip);
+
+        JPanel form = new JPanel(new GridLayout(1, 2, Spacing.XL, 0));
+        form.setOpaque(false);
+        form.setBorder(BorderFactory.createEmptyBorder(Spacing.XL, Spacing.XL, Spacing.L, Spacing.XL));
+        form.add(left);
+        form.add(right);
+
+        AuroraButton cancel = new AuroraButton("Cancel", AuroraButton.Variant.GHOST);
+        cancel.addActionListener(e -> dispose());
+        AuroraButton create = new AuroraButton("Create event", AuroraButton.Variant.DEFAULT);
         create.setMnemonic('R');
         create.addActionListener(e -> {
-            try {
-                Date dt = (Date) date.getValue();
-                LocalDateTime when = dt.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-                EventType type = pub.isSelected() ? EventType.PUBLIC : EventType.PRIVATE;
-                CreateEventResult result = controller.createEvent(
-                    name.getText().trim(),
-                    desc.getText(),
-                    when,
-                    location.getText().trim(),
-                    type);
-                d.dispose();
-                if (result.getWarnings().isEmpty()) {
-                    Toast.success(parent, "Event created.");
-                } else {
-                    Toast.warning(parent, result.getWarnings().get(0));
-                }
-                onCreated.run();
-            } catch (AppException ex) {
-                Toast.error(d.getContentPane(), ex.getMessage());
-            }
+            nameFF.clearError();
+            locFF.clearError();
+            dateFF.clearError();
+            Date dt = (Date) date.getValue();
+            LocalDateTime when = dt.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+            EventType type = typeToggle.getSelectedIndex() == 0 ? EventType.PUBLIC : EventType.PRIVATE;
+            String nameVal = name.getText().trim();
+            String descVal = desc.getText();
+            String locVal  = location.getText().trim();
+            AsyncUI.run(create,
+                () -> controller.createEvent(nameVal, descVal, when, locVal, type),
+                (CreateEventResult result) -> {
+                    dispose();
+                    if (result.getWarnings().isEmpty()) {
+                        Toast.success(parent, "Event created.");
+                    } else {
+                        Toast.warning(parent, result.getWarnings().get(0));
+                    }
+                    onCreated.run();
+                },
+                ex -> Toast.error(getContentPane(), ex.getMessage()));
         });
 
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, Spacing.S, Spacing.S));
+        buttons.setOpaque(false);
+        buttons.setBorder(BorderFactory.createEmptyBorder(0, Spacing.XL, Spacing.L, Spacing.XL));
         buttons.add(cancel);
         buttons.add(create);
-        d.getRootPane().setDefaultButton(create);
+        getRootPane().setDefaultButton(create);
 
-        d.add(form, BorderLayout.CENTER);
-        d.add(buttons, BorderLayout.SOUTH);
-        d.pack();
-        d.setLocationRelativeTo(parent);
-        d.setVisible(true);
+        add(form, BorderLayout.CENTER);
+        add(buttons, BorderLayout.SOUTH);
     }
 }

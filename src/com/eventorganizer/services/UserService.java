@@ -11,14 +11,23 @@ import com.eventorganizer.models.User;
 import com.eventorganizer.models.dto.UserProfileDTO;
 import com.eventorganizer.store.DataStore;
 import com.eventorganizer.utils.IdGenerator;
+import com.eventorganizer.utils.Limits;
+import com.eventorganizer.utils.Normalize;
 import com.eventorganizer.utils.PasswordHasher;
 import com.eventorganizer.utils.Validator;
 
 public class UserService {
 
     public User register(String username, String email, char[] rawPassword) {
-        if (!Validator.isNonEmpty(username))
-            throw new ValidationException("Username is required.", ErrorCode.ERR_VALIDATION);
+        Validator.requireNonBlank(username, "Username");
+        Validator.requireLength(username, Limits.USERNAME_MAX, "Username");
+        Validator.requireNonBlank(email, "Email");
+        Validator.requireLength(email, Limits.EMAIL_MAX, "Email");
+        if (Normalize.containsAmbiguousCharacters(username.trim())) {
+            throw new ValidationException(
+                "Username contains ambiguous characters. Use ASCII letters, digits, or underscores only.",
+                ErrorCode.ERR_VALIDATION);
+        }
         if (!Validator.isValidUsername(username.trim()))
             throw new ValidationException(
                 "Username must contain only letters, digits, or underscores.", ErrorCode.ERR_VALIDATION);
@@ -56,9 +65,22 @@ public class UserService {
     public User login(String username, char[] rawPassword) {
         DataStore ds = DataStore.INSTANCE;
         User u = ds.findUserByUsername(username).orElse(null);
-        if (u == null || !u.verifyPassword(rawPassword)) {
+        if (u == null) {
+            // Burn a dummy PBKDF2 so the unknown-username path costs the same
+            // wall-clock time as the real verify — prevents username enumeration
+            // via timing observation.
+            PasswordHasher.burnDummyVerify(rawPassword);
             throw new AuthenticationException("Invalid credentials",
                 ErrorCode.ERR_AUTH_INVALID_CREDENTIALS);
+        }
+        if (!u.verifyPassword(rawPassword)) {
+            throw new AuthenticationException("Invalid credentials",
+                ErrorCode.ERR_AUTH_INVALID_CREDENTIALS);
+        }
+        // Lazy re-hash: if the stored digest predates the current scheme, upgrade
+        // transparently on successful login (A2).
+        if (PasswordHasher.needsRehash(u.getPasswordHash())) {
+            u.setPasswordHash(PasswordHasher.hash(rawPassword, u.getSalt()));
         }
         ds.setCurrentUser(u);
         return u;
@@ -96,6 +118,7 @@ public class UserService {
     public void updateProfile(String email, String bio) {
         User u = requireCurrentUser();
         if (email != null && !email.trim().isEmpty()) {
+            Validator.requireLength(email, Limits.EMAIL_MAX, "Email");
             if (!Validator.isValidEmail(email)) {
                 throw new ValidationException("Invalid email format.", ErrorCode.ERR_VALIDATION);
             }
@@ -110,15 +133,15 @@ public class UserService {
             });
             u.setEmail(trimmed);
         }
-        if (bio != null) u.setBio(bio);
+        if (bio != null) {
+            Validator.requireLength(bio, Limits.BIO_MAX, "Bio");
+            u.setBio(bio);
+        }
     }
 
     public UserProfileDTO getProfile(User user) {
         if (user == null) throw new InvalidOperationException("user is required");
-        int eventsCreated = 0;
-        for (com.eventorganizer.models.Event e : DataStore.INSTANCE.getAllEvents()) {
-            if (e.getCreatorId().equals(user.getUserId())) eventsCreated++;
-        }
+        int eventsCreated = DataStore.INSTANCE.eventIdsForCreator(user.getUserId()).size();
         return new UserProfileDTO(
             user.getUserId(),
             user.getUsername(),

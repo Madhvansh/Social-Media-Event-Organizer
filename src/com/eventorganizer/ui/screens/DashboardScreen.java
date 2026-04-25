@@ -1,20 +1,28 @@
 package com.eventorganizer.ui.screens;
 
+import com.eventorganizer.ui.components.FootStrip;
 import com.eventorganizer.ui.components.Sidebar;
 import com.eventorganizer.ui.components.StatusBar;
 import com.eventorganizer.ui.controllers.UIController;
+import com.eventorganizer.ui.fx.PanelAnimator;
 import com.eventorganizer.ui.screens.panels.DiscoverEventsPanel;
 import com.eventorganizer.ui.screens.panels.FriendsPanel;
 import com.eventorganizer.ui.screens.panels.MyEventsPanel;
 import com.eventorganizer.ui.screens.panels.NotificationsPanel;
 import com.eventorganizer.ui.screens.panels.ProfilePanel;
 import com.eventorganizer.ui.screens.panels.ReportsPanel;
-import com.eventorganizer.ui.theme.Theme;
 
+import javax.swing.JComponent;
+import javax.swing.JLayer;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 
+/**
+ * Dashboard shell: {@link StatusBar} (Mast) at top, {@link Sidebar} (NavRail)
+ * at left, panels in the center wrapped in {@link JLayer} for fade transitions,
+ * {@link FootStrip} at the bottom.
+ */
 public class DashboardScreen extends JPanel {
 
     private final UIController controller;
@@ -23,6 +31,8 @@ public class DashboardScreen extends JPanel {
 
     private final CardLayout center = new CardLayout();
     private final JPanel centerPanel = new JPanel(center);
+    private final PanelAnimator centerFader = new PanelAnimator();
+    private final JLayer<JComponent> centerLayer;
 
     private final MyEventsPanel      events;
     private final DiscoverEventsPanel discover;
@@ -31,13 +41,15 @@ public class DashboardScreen extends JPanel {
     private final ReportsPanel        reports;
     private final ProfilePanel        profile;
 
-    private final StatusBar statusBar;
+    private final StatusBar mast;
+    private final Sidebar navRail;
+    private final FootStrip foot;
 
     public DashboardScreen(UIController controller, Runnable onLogout) {
+        super(new BorderLayout());
+        setOpaque(false);
         this.controller = controller;
         this.onLogout = onLogout;
-        setLayout(new BorderLayout());
-        setBackground(Theme.BG_PRIMARY);
 
         events        = new MyEventsPanel(controller, this::refreshAll);
         discover      = new DiscoverEventsPanel(controller, this::refreshAll);
@@ -54,19 +66,25 @@ public class DashboardScreen extends JPanel {
         centerPanel.add(reports,       "reports");
         centerPanel.add(profile,       "profile");
 
-        statusBar = new StatusBar(controller,
+        centerLayer = new JLayer<>((JComponent) centerPanel, centerFader);
+
+        mast = new StatusBar(controller,
             () -> show("profile"),
             () -> { controller.logout(); onLogout.run(); });
 
-        Sidebar sidebar = new Sidebar(this::show);
+        navRail = new Sidebar(controller, this::show);
 
-        add(statusBar,  BorderLayout.NORTH);
-        add(sidebar,    BorderLayout.WEST);
-        add(centerPanel, BorderLayout.CENTER);
+        foot = new FootStrip();
+
+        add(mast,       BorderLayout.NORTH);
+        add(navRail,    BorderLayout.WEST);
+        add(centerLayer, BorderLayout.CENTER);
+        add(foot,       BorderLayout.SOUTH);
     }
 
     public void show(String key) {
         center.show(centerPanel, key);
+        navRail.setActive(key);
         switch (key) {
             case "events":        events.refresh(); break;
             case "discover":      discover.refresh(); break;
@@ -76,7 +94,10 @@ public class DashboardScreen extends JPanel {
             case "profile":       profile.refresh(); break;
             default: break;
         }
-        statusBar.refresh(controller);
+        mast.refresh(controller);
+        navRail.refresh(controller);
+        refreshFoot();
+        centerFader.trigger();
     }
 
     public void onEnter() {
@@ -86,7 +107,9 @@ public class DashboardScreen extends JPanel {
         notifications.refresh();
         reports.refresh();
         profile.refresh();
-        statusBar.refresh(controller);
+        mast.refresh(controller);
+        navRail.refresh(controller);
+        refreshFoot();
         show("events");
     }
 
@@ -96,6 +119,17 @@ public class DashboardScreen extends JPanel {
         friends.refresh();
         notifications.refresh();
         reports.refresh();
-        statusBar.refresh(controller);
+        mast.refresh(controller);
+        navRail.refresh(controller);
+        refreshFoot();
+    }
+
+    private void refreshFoot() {
+        var u = controller.currentUser();
+        foot.set(
+            "connected",
+            "in-memory",
+            u == null ? "—" : u.getUsername(),
+            "v1.0");
     }
 }
