@@ -2,6 +2,7 @@ package com.eventorganizer.ui.screens.panels;
 
 import com.eventorganizer.exceptions.AppException;
 import com.eventorganizer.models.Event;
+import com.eventorganizer.ui.components.CardGrid;
 import com.eventorganizer.ui.components.EmptyState;
 import com.eventorganizer.ui.components.EventCard;
 import com.eventorganizer.ui.components.Toast;
@@ -9,70 +10,77 @@ import com.eventorganizer.ui.controllers.UIController;
 import com.eventorganizer.ui.dialogs.EventDetailsDialog;
 import com.eventorganizer.ui.theme.Spacing;
 import com.eventorganizer.ui.theme.Theme;
+import com.eventorganizer.ui.theme.Typography;
 
 import javax.swing.BorderFactory;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.util.List;
 
+/**
+ * Discover panel — public events you've been invited to. Same responsive card
+ * grid as My Events but cards render with the {@link EventCard.Variant#INCOMING}
+ * amethyst accent so the two feeds are visually distinct.
+ */
 public class DiscoverEventsPanel extends JPanel {
 
     private final UIController controller;
-    private final JPanel listPanel = new JPanel();
+    private final CardGrid grid = new CardGrid();
     private final Runnable onChange;
 
     public DiscoverEventsPanel(UIController controller, Runnable onChange) {
         this.controller = controller;
         this.onChange = onChange;
+        setOpaque(false);
         setLayout(new BorderLayout());
-        setBackground(Theme.BG_PRIMARY);
 
         JLabel title = new JLabel("Discover");
-        title.setFont(Theme.FONT_DISPLAY);
+        title.setFont(Typography.DISPLAY);
         title.setForeground(Theme.TEXT_PRIMARY);
-        title.setBorder(BorderFactory.createEmptyBorder(Spacing.L, Spacing.XL, Spacing.M, Spacing.XL));
+        title.setBorder(BorderFactory.createEmptyBorder(Spacing.XL, Spacing.XL, Spacing.M, Spacing.XL));
 
-        listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
-        listPanel.setBackground(Theme.BG_PRIMARY);
-        listPanel.setBorder(BorderFactory.createEmptyBorder(Spacing.S, Spacing.L, Spacing.L, Spacing.L));
+        JLabel sub = new JLabel("Public events you've been invited to.");
+        sub.setFont(Typography.BODY);
+        sub.setForeground(Theme.TEXT_SECONDARY);
+        sub.setBorder(BorderFactory.createEmptyBorder(0, Spacing.XL, Spacing.L, Spacing.XL));
 
-        add(title, BorderLayout.NORTH);
-        add(new JScrollPane(listPanel), BorderLayout.CENTER);
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        header.add(title, BorderLayout.NORTH);
+        header.add(sub, BorderLayout.CENTER);
+
+        grid.setOpaque(false);
+        JScrollPane sp = new JScrollPane(grid);
+        sp.setOpaque(false);
+        sp.getViewport().setOpaque(false);
+        sp.setBorder(BorderFactory.createEmptyBorder(0, Spacing.XL, Spacing.XL, Spacing.XL));
+        sp.getVerticalScrollBar().setUnitIncrement(24);
+
+        add(header, BorderLayout.NORTH);
+        add(sp, BorderLayout.CENTER);
 
         refresh();
     }
 
     public void refresh() {
         try {
-            listPanel.removeAll();
+            grid.removeAll();
             List<Event> events = controller.eventsInvitedTo();
             if (events.isEmpty()) {
-                EmptyState empty = new EmptyState("✧", "Nothing to discover yet",
-                    "Public events you've been invited to will show up here.");
-                empty.setAlignmentX(Component.CENTER_ALIGNMENT);
-                JPanel wrap = new JPanel(new java.awt.GridBagLayout());
-                wrap.setOpaque(false);
-                wrap.add(empty);
-                wrap.setAlignmentX(Component.LEFT_ALIGNMENT);
-                listPanel.add(wrap);
+                grid.add(new EmptyState("envelope", "Nothing to discover yet",
+                    "Public events you've been invited to will show up here."));
             } else {
                 for (Event e : events) {
-                    EventCard card = new EventCard(e, () ->
+                    grid.addCard(new EventCard(e, () ->
                         EventDetailsDialog.show(this, controller, e.getEventId(),
-                            () -> { refresh(); onChange.run(); }));
-                    card.setAlignmentX(Component.LEFT_ALIGNMENT);
-                    listPanel.add(card);
-                    listPanel.add(Box.createVerticalStrut(Spacing.M));
+                            () -> { refresh(); if (onChange != null) onChange.run(); }),
+                        EventCard.Variant.INCOMING));
                 }
             }
-            listPanel.add(Box.createVerticalGlue());
-            listPanel.revalidate();
-            listPanel.repaint();
+            grid.revalidate();
+            grid.repaint();
         } catch (AppException ex) {
             Toast.error(this, ex.getMessage());
         }

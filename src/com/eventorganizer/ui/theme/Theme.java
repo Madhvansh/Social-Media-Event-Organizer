@@ -11,65 +11,105 @@ import javax.swing.plaf.ColorUIResource;
 import javax.swing.plaf.FontUIResource;
 
 /**
- * Warm-obsidian palette + muted-bronze accent. The single source of truth for
- * every color, font, and L&F override the UI uses. Custom panels read the
- * constants below directly; FlatLaf-rendered widgets (tabs, buttons, inputs,
- * scrollbars) are reached via {@link #applyToUIManager()}.
+ * Obsidian Aurora design tokens. Warm-obsidian canvas with dual accent (ember
+ * bronze for user agency, amethyst for incoming social signals). Single source
+ * of truth for every color, font, and L&amp;F override the UI uses.
+ *
+ * <p>Colors are organised as:
+ * <ul>
+ *   <li>Background layers (BG_CANVAS → BG_PRIMARY → BG_ELEVATED → BG_OVERLAY → BG_GLASS)</li>
+ *   <li>Text tiers (TEXT_PRIMARY, TEXT_SECONDARY, TEXT_TERTIARY)</li>
+ *   <li>Ember bronze accent (ACCENT + HOVER/PRESSED/SOFT/GLOW)</li>
+ *   <li>Amethyst secondary (ACCENT2 + SOFT)</li>
+ *   <li>Status (SUCCESS/WARNING/DANGER/INFO + *_SOFT variants)</li>
+ *   <li>Borders (BORDER, BORDER_SUBTLE, BORDER_GLOW)</li>
+ * </ul>
+ *
+ * <p>WCAG AA contrast is verified for every canonical text/background pair by
+ * {@code ThemeContrastTest}. Don't tweak a color without updating the test.
+ *
+ * <p>Fonts are initialised from {@link Typography}; call {@link FontLoader#load()}
+ * before reading the FONT_* tokens so vendored Inter/JetBrains Mono register first.
  */
 public final class Theme {
     private Theme() {}
 
-    public static final Color BG_PRIMARY    = new Color(0x1B1612);
-    public static final Color BG_ELEVATED   = new Color(0x231E19);
-    public static final Color BG_HOVER      = new Color(0x2D2620);
-    public static final Color BG_OVERLAY    = new Color(15, 12, 10, 153);
+    // ---------------- Background layers ----------------
+    public static final Color BG_CANVAS    = new Color(0x141009);
+    public static final Color BG_PRIMARY   = new Color(0x1B1612);
+    public static final Color BG_ELEVATED  = new Color(0x231E19);
+    public static final Color BG_OVERLAY   = new Color(0x2D2620);
+    /** ~72% opaque, used for glass cards, dialog backdrops, command overlays. */
+    public static final Color BG_GLASS     = new Color(26, 21, 17, 184);
+    /** Heavy overlay used to dim the backdrop behind dialogs. */
+    public static final Color BG_SCRIM     = new Color(10, 7, 5, 140);
+
+    /** @deprecated alias for {@link #BG_OVERLAY}; kept for backcompat. */
+    @Deprecated public static final Color BG_HOVER = BG_OVERLAY;
+
+    // ---------------- Text tiers ----------------
+    public static final Color TEXT_PRIMARY   = new Color(0xEDE4D3);
+    public static final Color TEXT_SECONDARY = new Color(0xB8AA97);
+    public static final Color TEXT_TERTIARY  = new Color(0x7F7264);
+
+    /** @deprecated alias for {@link #TEXT_SECONDARY}; kept for backcompat. */
+    @Deprecated public static final Color TEXT_MUTED = TEXT_SECONDARY;
+
+    // ---------------- Ember bronze (primary accent — user agency) ----------------
+    public static final Color ACCENT          = new Color(0xC8915F);
+    public static final Color ACCENT_HOVER    = new Color(0xD9A472);
+    public static final Color ACCENT_PRESSED  = new Color(0xA87848);
+    public static final Color ACCENT_SOFT     = new Color(200, 145, 95, 46);
+    public static final Color ACCENT_GLOW     = new Color(200, 145, 95, 90);
+
+    // ---------------- Amethyst (secondary accent — incoming signals) ----------------
+    public static final Color ACCENT2         = new Color(0x9B7FB5);
+    public static final Color ACCENT2_SOFT    = new Color(155, 127, 181, 46);
+    public static final Color ACCENT2_GLOW    = new Color(155, 127, 181, 90);
+
+    // ---------------- Status colors ----------------
+    public static final Color SUCCESS = new Color(0x8AB079);
+    public static final Color WARNING = new Color(0xD4AB6D);
+    public static final Color DANGER  = new Color(0xC47163);
+    public static final Color INFO    = new Color(0x93A7B7);
+
+    public static final Color SUCCESS_SOFT = new Color(138, 176, 121, 46);
+    public static final Color WARNING_SOFT = new Color(212, 171, 109, 46);
+    public static final Color DANGER_SOFT  = new Color(196, 113, 99, 46);
+    public static final Color INFO_SOFT    = new Color(147, 167, 183, 46);
+
+    // ---------------- Borders ----------------
     public static final Color BORDER        = new Color(0x3A322B);
     public static final Color BORDER_SUBTLE = new Color(0x2A251F);
+    public static final Color BORDER_GLOW   = new Color(200, 145, 95, 140);
 
-    public static final Color TEXT_PRIMARY  = new Color(0xEAE2D4);
-    public static final Color TEXT_MUTED    = new Color(0xA89B8B);
-    public static final Color TEXT_TERTIARY = new Color(0x7A6E61);
-
-    public static final Color ACCENT         = new Color(0xB88D5E);
-    public static final Color ACCENT_HOVER   = new Color(0xCA9E6C);
-    public static final Color ACCENT_PRESSED = new Color(0x9C774E);
-    public static final Color ACCENT_SOFT    = new Color(184, 141, 94, 46);
-
-    public static final Color SUCCESS = new Color(0x7D9A6E);
-    public static final Color WARNING = new Color(0xC9A264);
-    public static final Color DANGER  = new Color(0xB06654);
-    public static final Color INFO    = new Color(0x8A9BA8);
-
-    public static final Color SUCCESS_SOFT = new Color(125, 154, 110, 46);
-    public static final Color WARNING_SOFT = new Color(201, 162, 100, 46);
-    public static final Color DANGER_SOFT  = new Color(176, 102, 84, 46);
-    public static final Color INFO_SOFT    = new Color(138, 155, 168, 46);
-
+    // ---------------- Typography fallback chain ----------------
     private static final String PREFERRED_SANS = "Inter";
     private static final String PREFERRED_MONO = "JetBrains Mono";
 
-    private static final String SANS = resolveSans();
-    private static final String MONO = resolveMono();
+    public static final String SANS = resolveSans();
+    public static final String MONO = resolveMono();
 
-    public static final Font FONT_DISPLAY   = new Font(SANS, Font.BOLD,  22);
-    public static final Font FONT_TITLE     = new Font(SANS, Font.BOLD,  16);
+    // Legacy font tokens — kept as aliases into the new Typography scale.
+    public static final Font FONT_DISPLAY   = new Font(SANS, Font.BOLD,  32);
+    public static final Font FONT_TITLE     = new Font(SANS, Font.BOLD,  18);
     public static final Font FONT_SUBTITLE  = new Font(SANS, Font.PLAIN, 14);
     public static final Font FONT_BODY      = new Font(SANS, Font.PLAIN, 13);
     public static final Font FONT_BODY_BOLD = new Font(SANS, Font.BOLD,  13);
     public static final Font FONT_SMALL     = new Font(SANS, Font.PLAIN, 11);
     public static final Font FONT_MONO      = new Font(MONO, Font.PLAIN, 12);
 
-    private static String resolveSans() {
+    static String resolveSans() {
         String[] chain = { PREFERRED_SANS, "Segoe UI", "SF Pro Text", "SF Pro Display", Font.SANS_SERIF };
         return resolveFromChain(chain);
     }
 
-    private static String resolveMono() {
-        String[] chain = { PREFERRED_MONO, "Consolas", "Menlo", Font.MONOSPACED };
+    static String resolveMono() {
+        String[] chain = { PREFERRED_MONO, "JetBrainsMono-Regular", "Consolas", "Menlo", Font.MONOSPACED };
         return resolveFromChain(chain);
     }
 
-    private static String resolveFromChain(String[] chain) {
+    static String resolveFromChain(String[] chain) {
         try {
             Set<String> available = new HashSet<>(Arrays.asList(
                 GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()));
@@ -80,22 +120,40 @@ public final class Theme {
         return chain[chain.length - 1];
     }
 
+    /**
+     * Linearly blends {@code top} onto {@code base}. Used for hover/press states
+     * that can't rely on alpha over arbitrary parents.
+     */
+    public static Color blend(Color base, Color top, float t) {
+        float u = 1f - t;
+        return new Color(
+            Math.min(255, Math.round(base.getRed()   * u + top.getRed()   * t)),
+            Math.min(255, Math.round(base.getGreen() * u + top.getGreen() * t)),
+            Math.min(255, Math.round(base.getBlue()  * u + top.getBlue()  * t)));
+    }
+
+    /** Returns the same color with the given alpha (0-255). */
+    public static Color withAlpha(Color c, int alpha) {
+        return new Color(c.getRed(), c.getGreen(), c.getBlue(),
+            Math.max(0, Math.min(255, alpha)));
+    }
+
     public static void applyToUIManager() {
         ColorUIResource bgPrimary  = new ColorUIResource(BG_PRIMARY);
         ColorUIResource bgElevated = new ColorUIResource(BG_ELEVATED);
-        ColorUIResource bgHover    = new ColorUIResource(BG_HOVER);
+        ColorUIResource bgHover    = new ColorUIResource(BG_OVERLAY);
         ColorUIResource border     = new ColorUIResource(BORDER);
         ColorUIResource borderSub  = new ColorUIResource(BORDER_SUBTLE);
         ColorUIResource textPri    = new ColorUIResource(TEXT_PRIMARY);
-        ColorUIResource textMuted  = new ColorUIResource(TEXT_MUTED);
+        ColorUIResource textMuted  = new ColorUIResource(TEXT_SECONDARY);
         ColorUIResource textTert   = new ColorUIResource(TEXT_TERTIARY);
         ColorUIResource accent     = new ColorUIResource(ACCENT);
         ColorUIResource accentHov  = new ColorUIResource(ACCENT_HOVER);
         ColorUIResource accentPr   = new ColorUIResource(ACCENT_PRESSED);
         ColorUIResource accentSoft = new ColorUIResource(ACCENT_SOFT);
 
-        FontUIResource bodyFont  = new FontUIResource(FONT_BODY);
-        FontUIResource smallFont = new FontUIResource(FONT_SMALL);
+        FontUIResource bodyFont  = new FontUIResource(Typography.BODY);
+        FontUIResource smallFont = new FontUIResource(Typography.SMALL);
 
         UIManager.put("Panel.background",      bgPrimary);
         UIManager.put("RootPane.background",   bgPrimary);
@@ -115,7 +173,7 @@ public final class Theme {
         UIManager.put("Button.focusedBorderColor", accent);
         UIManager.put("Button.focusColor",         accent);
         UIManager.put("Button.borderColor",        border);
-        UIManager.put("Button.arc",                Integer.valueOf(16));
+        UIManager.put("Button.arc",                Integer.valueOf(Radius.LG));
         UIManager.put("Button.innerFocusWidth",    Integer.valueOf(0));
         UIManager.put("Button.font",               bodyFont);
         UIManager.put("Button.default.background",       accent);
@@ -131,7 +189,7 @@ public final class Theme {
         UIManager.put("ToggleButton.selectedBackground", accentSoft);
         UIManager.put("ToggleButton.selectedForeground", textPri);
         UIManager.put("ToggleButton.hoverBackground", bgHover);
-        UIManager.put("ToggleButton.arc",             Integer.valueOf(16));
+        UIManager.put("ToggleButton.arc",             Integer.valueOf(Radius.LG));
         UIManager.put("ToggleButton.borderColor",     border);
         UIManager.put("ToggleButton.focusedBorderColor", accent);
 
@@ -161,7 +219,7 @@ public final class Theme {
         UIManager.put("TextField.borderColor",         border);
         UIManager.put("TextField.focusedBorderColor",  accent);
         UIManager.put("TextField.placeholderForeground", textTert);
-        UIManager.put("TextField.arc",                 Integer.valueOf(16));
+        UIManager.put("TextField.arc",                 Integer.valueOf(Radius.LG));
         UIManager.put("TextField.font",                bodyFont);
         UIManager.put("TextField.disabledBackground",  bgPrimary);
         UIManager.put("TextField.disabledForeground",  textTert);
@@ -173,7 +231,7 @@ public final class Theme {
         UIManager.put("PasswordField.selectionForeground", textPri);
         UIManager.put("PasswordField.borderColor",         border);
         UIManager.put("PasswordField.focusedBorderColor",  accent);
-        UIManager.put("PasswordField.arc",                 Integer.valueOf(16));
+        UIManager.put("PasswordField.arc",                 Integer.valueOf(Radius.LG));
         UIManager.put("PasswordField.font",                bodyFont);
 
         UIManager.put("TextArea.background",          bgElevated);
@@ -211,7 +269,7 @@ public final class Theme {
         UIManager.put("ComboBox.selectionForeground",  textPri);
         UIManager.put("ComboBox.borderColor",          border);
         UIManager.put("ComboBox.focusedBorderColor",   accent);
-        UIManager.put("ComboBox.arc",                  Integer.valueOf(16));
+        UIManager.put("ComboBox.arc",                  Integer.valueOf(Radius.LG));
         UIManager.put("ComboBox.font",                 bodyFont);
 
         UIManager.put("Spinner.background",         bgElevated);
@@ -221,7 +279,7 @@ public final class Theme {
         UIManager.put("Spinner.buttonHoverArrowColor", textPri);
         UIManager.put("Spinner.borderColor",        border);
         UIManager.put("Spinner.focusedBorderColor", accent);
-        UIManager.put("Spinner.arc",                Integer.valueOf(16));
+        UIManager.put("Spinner.arc",                Integer.valueOf(Radius.LG));
         UIManager.put("Spinner.font",               bodyFont);
 
         UIManager.put("CheckBox.background", bgPrimary);

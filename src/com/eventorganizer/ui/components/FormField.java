@@ -2,6 +2,7 @@ package com.eventorganizer.ui.components;
 
 import com.eventorganizer.ui.theme.Spacing;
 import com.eventorganizer.ui.theme.Theme;
+import com.eventorganizer.ui.theme.Typography;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -14,8 +15,11 @@ import java.awt.Component;
 import java.awt.Dimension;
 
 /**
- * Label + input + reserved error slot. Error state turns the input border
- * red and fills the error slot with the error text.
+ * Label + input + reserved error slot. Error state turns the input border red
+ * and fills the error slot with the error text.
+ *
+ * <p>Uses Typography tokens for the label (small, tracked caps) and the error
+ * line (small, danger-colored).
  */
 public class FormField extends JPanel {
 
@@ -30,9 +34,9 @@ public class FormField extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel label = new JLabel(labelText);
-        label.setForeground(Theme.TEXT_MUTED);
-        label.setFont(Theme.FONT_SUBTITLE);
+        JLabel label = new JLabel(labelText == null ? "" : labelText);
+        label.setForeground(Theme.TEXT_SECONDARY);
+        label.setFont(Typography.LABEL);
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
         label.setLabelFor(input);
         label.setBorder(BorderFactory.createEmptyBorder(0, 0, Spacing.XS, 0));
@@ -50,7 +54,7 @@ public class FormField extends JPanel {
 
         errorLabel = new JLabel(" ");
         errorLabel.setForeground(Theme.DANGER);
-        errorLabel.setFont(Theme.FONT_SMALL);
+        errorLabel.setFont(Typography.SMALL);
         errorLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         errorLabel.setBorder(BorderFactory.createEmptyBorder(Spacing.XS, 0, 0, 0));
 

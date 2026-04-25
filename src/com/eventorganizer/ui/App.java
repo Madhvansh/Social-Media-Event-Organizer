@@ -1,18 +1,22 @@
 package com.eventorganizer.ui;
 
-import com.eventorganizer.ui.components.SurfacePanel;
 import com.eventorganizer.ui.controllers.UIController;
+import com.eventorganizer.ui.fx.CanvasPanel;
 import com.eventorganizer.ui.screens.AuthScreen;
 import com.eventorganizer.ui.screens.DashboardScreen;
 import com.eventorganizer.ui.theme.Theme;
 
 import javax.swing.JFrame;
-import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import java.awt.CardLayout;
 import java.awt.Dimension;
 
+/**
+ * Top-level frame + auth/dashboard switcher. Uses {@link CanvasPanel} as the
+ * content pane — the panel paints the aurora-mesh backdrop in its own
+ * paintComponent so screens added as children always paint cleanly on top.
+ */
 public class App {
 
     private static final String CARD_AUTH = "auth";
@@ -20,7 +24,7 @@ public class App {
 
     private JFrame frame;
     private CardLayout layout;
-    private JPanel root;
+    private CanvasPanel root;
     private UIController controller;
     private DashboardScreen dashboard;
 
@@ -33,11 +37,12 @@ public class App {
 
         frame = new JFrame("Event Organizer");
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.setPreferredSize(new Dimension(1200, 800));
-        frame.getContentPane().setBackground(Theme.BG_PRIMARY);
+        frame.setPreferredSize(new Dimension(1280, 820));
+        frame.setMinimumSize(new Dimension(1040, 700));
+        frame.getContentPane().setBackground(Theme.BG_CANVAS);
 
         layout = new CardLayout();
-        root = new SurfacePanel(layout, Theme.BG_PRIMARY, true);
+        root = new CanvasPanel(layout);
 
         AuthScreen auth = new AuthScreen(controller, v -> showDashboard());
         root.add(auth, CARD_AUTH);
