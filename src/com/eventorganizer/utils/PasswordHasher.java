@@ -20,7 +20,7 @@ public final class PasswordHasher {
         return salt;
     }
 
-    /** Primary API: hash a char[] password. Does not zero the input — caller owns lifetime. */
+    /** Primary API: hash a char[] password. Does not zero the input. Caller owns lifetime. */
     public static String hash(char[] rawPassword, byte[] salt) {
         if (rawPassword == null || salt == null) {
             throw new IllegalArgumentException("password and salt must not be null");
@@ -39,13 +39,13 @@ public final class PasswordHasher {
         }
     }
 
-    /** Legacy overload retained for callers still holding passwords as String. */
+    /** Overload kept for those using password as String. */
     public static String hash(String rawPassword, byte[] salt) {
         if (rawPassword == null) throw new IllegalArgumentException("password must not be null");
         return hash(rawPassword.toCharArray(), salt);
     }
 
-    /** Constant-time verify; prefers char[] to avoid interning raw passwords. */
+    /** Constant-time verification; prefers char[] to prevent interning raw password. */
     public static boolean verify(char[] rawPassword, byte[] salt, String expectedHash) {
         if (rawPassword == null || salt == null || expectedHash == null) return false;
         String actual = hash(rawPassword, salt);
@@ -62,7 +62,7 @@ public final class PasswordHasher {
         return verify(rawPassword.toCharArray(), salt, expectedHash);
     }
 
-    /** Constant-time byte-for-byte equality of two digests (wraps MessageDigest.isEqual). */
+    /** Constant time byte-for-byte equality of 2 digests. */
     public static boolean constantTimeEquals(byte[] a, byte[] b) {
         return MessageDigest.isEqual(a, b);
     }
