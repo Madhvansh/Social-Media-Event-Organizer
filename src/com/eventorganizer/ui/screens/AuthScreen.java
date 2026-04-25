@@ -119,7 +119,20 @@ public class AuthScreen extends JPanel {
         hint.setFont(Typography.SMALL);
         hint.setForeground(Theme.TEXT_TERTIARY);
         hint.setHorizontalAlignment(SwingConstants.CENTER);
-        hint.setBorder(BorderFactory.createEmptyBorder(Spacing.L, 0, 0, 0));
+        hint.setBorder(BorderFactory.createEmptyBorder(Spacing.L, 0, Spacing.S, 0));
+
+        // Reduced-motion accessibility toggle (also available in Profile).
+        com.eventorganizer.ui.components.MotionToggle motionToggle =
+            new com.eventorganizer.ui.components.MotionToggle();
+        JPanel motionWrap = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 0, 0));
+        motionWrap.setOpaque(false);
+        motionWrap.setBorder(BorderFactory.createEmptyBorder(0, 0, Spacing.S, 0));
+        motionWrap.add(motionToggle);
+
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.setOpaque(false);
+        footer.add(hint,        BorderLayout.NORTH);
+        footer.add(motionWrap,  BorderLayout.SOUTH);
 
         card.add(header, BorderLayout.NORTH);
         JPanel center = new JPanel(new BorderLayout());
@@ -127,7 +140,7 @@ public class AuthScreen extends JPanel {
         center.add(toggleWrap, BorderLayout.NORTH);
         center.add(body, BorderLayout.CENTER);
         card.add(center, BorderLayout.CENTER);
-        card.add(hint, BorderLayout.SOUTH);
+        card.add(footer, BorderLayout.SOUTH);
 
         return card;
     }
@@ -253,14 +266,19 @@ public class AuthScreen extends JPanel {
         return out;
     }
 
-    /** Fixed-size glass card with a soft E3 shadow behind it. */
+    /** Glass card — fixed width 520 px, height grows to fit children. */
     private static final class GlassCard extends JPanel {
         GlassCard() {
             setOpaque(false);
         }
-        @Override public Dimension getPreferredSize() { return new Dimension(520, 600); }
-        @Override public Dimension getMinimumSize()   { return getPreferredSize(); }
-        @Override public Dimension getMaximumSize()   { return getPreferredSize(); }
+        @Override
+        public Dimension getPreferredSize() {
+            Dimension natural = super.getPreferredSize();
+            int h = Math.max(560, natural.height);
+            return new Dimension(520, h);
+        }
+        @Override public Dimension getMinimumSize() { return getPreferredSize(); }
+        @Override public Dimension getMaximumSize() { return getPreferredSize(); }
 
         @Override
         protected void paintComponent(Graphics g) {

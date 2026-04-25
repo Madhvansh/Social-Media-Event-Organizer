@@ -191,8 +191,16 @@ public enum DataStore {
         com.eventorganizer.utils.IdGenerator.resetForTests();
     }
 
+    /** Mark the store as already-seeded — used by {@link Persistence#load} so the demo seed doesn't overwrite restored data. */
+    public synchronized void markSeeded() {
+        this.seeded = true;
+    }
+
     public synchronized void seed() {
         if (seeded) return;
+        // If a previous run's data was loaded, getAllUsers() will be non-empty;
+        // skip the demo seed in that case.
+        if (!usersById.isEmpty()) { seeded = true; return; }
         seeded = true;
 
         UserService us = new UserService();

@@ -5,7 +5,8 @@ import com.eventorganizer.utils.DateUtil;
 
 import java.time.LocalDateTime;
 
-public abstract class Notification {
+public abstract class Notification implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private final String notificationId;
     private final String recipientId;
     private final String message;

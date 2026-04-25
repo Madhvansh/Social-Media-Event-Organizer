@@ -44,6 +44,7 @@ public final class Constellation extends JComponent {
         addHierarchyListener(e -> {
             if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) updateRunState();
         });
+        Motion.addListener(() -> { updateRunState(); repaint(); });
         SwingUtilities.invokeLater(this::attachFocusListener);
     }
 

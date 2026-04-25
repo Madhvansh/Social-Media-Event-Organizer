@@ -8,7 +8,6 @@ import com.eventorganizer.ui.theme.Theme;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.border.Border;
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -19,19 +18,24 @@ import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.RoundRectangle2D;
 
 /**
- * JButton with Obsidian Aurora signature: press-ripple (radial expansion from
- * the click origin, 340 ms) and a two-layer focus halo (2 px border glow plus
- * an 8 px outer accent halo). Base rendering is left to FlatLaf — this class
- * only adds overlays.
+ * JButton with Obsidian Aurora signature. We paint the background ourselves
+ * (instead of relying on FlatLaf's {@code JButton.buttonType=default} hint,
+ * which only kicks in for the root pane's actual default button) so every
+ * variant renders with a guaranteed-readable contrast pairing.
  *
- * <p>Three visual variants:
+ * <p>Variants:
  * <ul>
- *   <li><b>DEFAULT</b> — solid accent fill, obsidian text. {@code JButton.buttonType=default}.</li>
- *   <li><b>OUTLINE</b> — ghost fill with bordered outline (the FlatLaf default look).</li>
- *   <li><b>GHOST</b> — no border, transparent bg until hover; for tertiary actions.</li>
+ *   <li><b>DEFAULT</b> — bronze fill, obsidian text. Primary CTAs.</li>
+ *   <li><b>OUTLINE</b> — elevated bg + border, primary-text. Secondary actions.</li>
+ *   <li><b>GHOST</b> — transparent bg until hover. Tertiary actions, footer/util.</li>
+ *   <li><b>DANGER</b> — danger-red outline + text. Destructive actions.</li>
  * </ul>
+ *
+ * <p>All variants get press ripple + 2-layer focus halo. Hover lerp into the
+ * target colour over {@link Motion#MICRO} ms.
  */
 public final class AuroraButton extends JButton {
 
@@ -50,32 +54,29 @@ public final class AuroraButton extends JButton {
         super(text);
         setVariant(variant);
         setFocusPainted(false);
-        setContentAreaFilled(true);
-        setBorder(outerHaloBorder());
+        // We paint the background ourselves so the LAF can't override it.
+        setContentAreaFilled(false);
+        setOpaque(false);
+        setRolloverEnabled(true);
+        setBorder(BorderFactory.createEmptyBorder(8, 18, 8, 18));
+        setForegroundForVariant();
         attachMouseListener();
     }
 
     public void setVariant(Variant v) {
         this.variant = v;
-        switch (v) {
-            case DEFAULT:
-                putClientProperty("JButton.buttonType", "default");
-                setForeground(new Color(0x1B1612));
-                break;
-            case GHOST:
-                putClientProperty("JButton.buttonType", "borderless");
-                setForeground(Theme.TEXT_PRIMARY);
-                break;
-            case DANGER:
-                putClientProperty("JButton.buttonType", null);
-                setForeground(Theme.DANGER);
-                break;
-            case OUTLINE:
-            default:
-                putClientProperty("JButton.buttonType", null);
-                setForeground(Theme.TEXT_PRIMARY);
-        }
+        setForegroundForVariant();
         repaint();
+    }
+
+    private void setForegroundForVariant() {
+        switch (variant) {
+            case DEFAULT: setForeground(new Color(0x1B1612)); break;
+            case DANGER:  setForeground(Theme.DANGER);        break;
+            case OUTLINE: setForeground(Theme.TEXT_PRIMARY);  break;
+            case GHOST:
+            default:      setForeground(Theme.TEXT_SECONDARY);
+        }
     }
 
     private void attachMouseListener() {
@@ -84,6 +85,8 @@ public final class AuroraButton extends JButton {
                 if (!isEnabled()) return;
                 startRipple(e.getPoint());
             }
+            @Override public void mouseEntered(MouseEvent e) { repaint(); }
+            @Override public void mouseExited(MouseEvent e)  { repaint(); }
         };
         addMouseListener(ma);
     }
@@ -104,32 +107,87 @@ public final class AuroraButton extends JButton {
 
     @Override
     protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
-        if (ripplePoint == null || rippleAlpha <= 0f) return;
-
         Graphics2D g2 = (Graphics2D) g.create();
         try {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int w = getWidth(), h = getHeight();
             int arc = Radius.LG;
-            g2.setClip(new java.awt.geom.RoundRectangle2D.Float(
-                0, 0, getWidth(), getHeight(), arc, arc));
-            Color c = (variant == Variant.DEFAULT) ? new Color(27, 22, 18, 255) : Theme.ACCENT;
-            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, rippleAlpha));
-            g2.setColor(c);
-            g2.fillOval(
-                (int) (ripplePoint.x - rippleRadius),
-                (int) (ripplePoint.y - rippleRadius),
-                (int) (rippleRadius * 2),
-                (int) (rippleRadius * 2));
+
+            paintBackground(g2, w, h, arc);
+
+            // Ripple — clipped to the rounded rect so it doesn't bleed outside.
+            if (ripplePoint != null && rippleAlpha > 0f) {
+                g2.setClip(new RoundRectangle2D.Float(0, 0, w, h, arc, arc));
+                Color c = (variant == Variant.DEFAULT) ? new Color(27, 22, 18) : Theme.ACCENT;
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, rippleAlpha));
+                g2.setColor(c);
+                g2.fillOval(
+                    (int) (ripplePoint.x - rippleRadius),
+                    (int) (ripplePoint.y - rippleRadius),
+                    (int) (rippleRadius * 2),
+                    (int) (rippleRadius * 2));
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+                g2.setClip(null);
+            }
         } finally {
             g2.dispose();
+        }
+
+        // Let super render the text/icon on top of our background.
+        super.paintComponent(g);
+    }
+
+    private void paintBackground(Graphics2D g, int w, int h, int arc) {
+        boolean disabled = !isEnabled();
+        boolean pressed = getModel().isPressed();
+        boolean hover = getModel().isRollover();
+
+        switch (variant) {
+            case DEFAULT: {
+                Color fill = disabled ? Theme.BG_OVERLAY
+                    : pressed ? Theme.ACCENT_PRESSED
+                    : hover ? Theme.ACCENT_HOVER
+                    : Theme.ACCENT;
+                g.setColor(fill);
+                g.fillRoundRect(0, 0, w, h, arc, arc);
+                break;
+            }
+            case DANGER: {
+                Color stroke = disabled ? Theme.BORDER : Theme.DANGER;
+                g.setColor(disabled ? Theme.BG_ELEVATED
+                    : hover ? Theme.DANGER_SOFT : Theme.BG_ELEVATED);
+                g.fillRoundRect(0, 0, w, h, arc, arc);
+                g.setColor(stroke);
+                g.setStroke(new BasicStroke(1.2f));
+                g.drawRoundRect(0, 0, w - 1, h - 1, arc, arc);
+                break;
+            }
+            case OUTLINE: {
+                Color fill = disabled ? Theme.BG_ELEVATED
+                    : pressed ? new Color(0x1F1A15)
+                    : hover ? Theme.BG_OVERLAY : Theme.BG_ELEVATED;
+                g.setColor(fill);
+                g.fillRoundRect(0, 0, w, h, arc, arc);
+                g.setColor(Theme.BORDER);
+                g.setStroke(new BasicStroke(1f));
+                g.drawRoundRect(0, 0, w - 1, h - 1, arc, arc);
+                break;
+            }
+            case GHOST:
+            default: {
+                if (hover && !disabled) {
+                    g.setColor(Theme.BG_OVERLAY);
+                    g.fillRoundRect(0, 0, w, h, arc, arc);
+                }
+                break;
+            }
         }
     }
 
     @Override
     protected void paintBorder(Graphics g) {
-        super.paintBorder(g);
         if (!isFocusOwner() || Motion.REDUCED) return;
 
         Graphics2D g2 = (Graphics2D) g.create();
@@ -138,12 +196,11 @@ public final class AuroraButton extends JButton {
                 RenderingHints.VALUE_ANTIALIAS_ON);
             int arc = Radius.LG;
             int[] widths = { 7, 4, 2 };
-            float[] mults = { 0.28f, 0.55f, 0.90f };
+            float[] mults = { 0.18f, 0.32f, 0.55f };
             Color base = (variant == Variant.DANGER) ? Theme.DANGER : Theme.ACCENT;
             for (int i = 0; i < widths.length; i++) {
                 int a = Math.round(255 * mults[i]);
-                g2.setColor(new Color(base.getRed(), base.getGreen(), base.getBlue(),
-                    Math.min(255, (int) (a * 0.35f))));
+                g2.setColor(new Color(base.getRed(), base.getGreen(), base.getBlue(), a));
                 g2.setStroke(new BasicStroke(widths[i],
                     BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 g2.drawRoundRect(1, 1, getWidth() - 2, getHeight() - 2, arc, arc);
@@ -151,10 +208,6 @@ public final class AuroraButton extends JButton {
         } finally {
             g2.dispose();
         }
-    }
-
-    private static Border outerHaloBorder() {
-        return BorderFactory.createEmptyBorder(6, 14, 6, 14);
     }
 
     @Override

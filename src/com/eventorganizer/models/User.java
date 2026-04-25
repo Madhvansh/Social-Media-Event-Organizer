@@ -16,7 +16,8 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class User implements Reportable {
+public class User implements Reportable, java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private final String userId;
     private final String username;
     private String email;

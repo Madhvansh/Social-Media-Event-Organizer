@@ -74,6 +74,8 @@ public class ProfilePanel extends JPanel {
             body.add(Box.createVerticalStrut(Spacing.XL));
             body.add(buildEditAndStats(p));
             body.add(Box.createVerticalStrut(Spacing.XL));
+            body.add(buildAccessibilityRow());
+            body.add(Box.createVerticalStrut(Spacing.M));
             body.add(buildDangerZone());
             body.add(Box.createVerticalGlue());
 
@@ -243,6 +245,46 @@ public class ProfilePanel extends JPanel {
         tile.add(l);
         tile.add(v);
         return tile;
+    }
+
+    /**
+     * Accessibility settings row. Currently hosts the reduced-motion toggle —
+     * mirrors the AuthScreen control so users can flip it without logging out.
+     */
+    private JPanel buildAccessibilityRow() {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setOpaque(true);
+        row.setBackground(Theme.BG_ELEVATED);
+        row.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Theme.BORDER_SUBTLE, 1, true),
+            BorderFactory.createEmptyBorder(Spacing.M, Spacing.L, Spacing.M, Spacing.L)));
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 64));
+
+        JPanel left = new JPanel();
+        left.setOpaque(false);
+        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
+        JLabel zoneLabel = new JLabel("Accessibility");
+        zoneLabel.setFont(Typography.BODY_BOLD);
+        zoneLabel.setForeground(Theme.TEXT_PRIMARY);
+        zoneLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel hint = new JLabel("Freeze the aurora backdrop and disable transitions.");
+        hint.setFont(Typography.SMALL);
+        hint.setForeground(Theme.TEXT_SECONDARY);
+        hint.setAlignmentX(Component.LEFT_ALIGNMENT);
+        hint.setBorder(BorderFactory.createEmptyBorder(2, 0, 0, 0));
+        left.add(zoneLabel);
+        left.add(hint);
+
+        com.eventorganizer.ui.components.MotionToggle toggle =
+            new com.eventorganizer.ui.components.MotionToggle();
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, Spacing.S, 0));
+        right.setOpaque(false);
+        right.add(toggle);
+
+        row.add(left, BorderLayout.WEST);
+        row.add(right, BorderLayout.EAST);
+        return row;
     }
 
     private JPanel buildDangerZone() {

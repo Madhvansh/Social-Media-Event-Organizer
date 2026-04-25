@@ -192,6 +192,26 @@ public class EventService {
         return list;
     }
 
+    /**
+     * Public events browsable by the current user — every active, upcoming
+     * {@link PublicEvent} they did not create. Per the Q7 spec, public events
+     * are visible to all users (not just those explicitly invited).
+     */
+    public List<Event> discoverPublicEvents() {
+        User current = requireLoggedIn();
+        DataStore ds = DataStore.INSTANCE;
+        List<Event> list = new ArrayList<>();
+        for (Event e : ds.getAllEvents()) {
+            if (!(e instanceof PublicEvent)) continue;
+            if (e.getCreatorId().equals(current.getUserId())) continue;
+            if (e.getStatus() == EventStatus.CANCELLED) continue;
+            if (e.isPast()) continue;
+            list.add(e);
+        }
+        list.sort(UPCOMING_ASC_BY_NAME);
+        return list;
+    }
+
     private boolean isFarFuture(LocalDateTime dt) {
         if (dt == null) return false;
         LocalDateTime cap = LocalDateTime.now(DataStore.INSTANCE.getClock())

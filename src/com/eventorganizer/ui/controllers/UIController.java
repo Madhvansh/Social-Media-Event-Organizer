@@ -86,6 +86,9 @@ public class UIController {
     public List<Event> myUpcoming()   { return eventSvc.viewUpcoming(); }
     public List<Event> myPast()       { return eventSvc.viewPast(); }
 
+    /** All upcoming public events the current user did not create. */
+    public List<Event> discoverPublicEvents() { return eventSvc.discoverPublicEvents(); }
+
     public Event viewEvent(String id) { return eventSvc.viewEventDetails(id); }
 
     /* ---------- invitations ---------- */
@@ -108,6 +111,10 @@ public class UIController {
 
     public List<Event> eventsInvitedTo() {
         return inviteSvc.eventsWithPendingInvitationsFor(userSvc.requireCurrentUser());
+    }
+
+    public Invitation joinPublicEvent(String eventId) {
+        return inviteSvc.joinPublicEvent(eventId);
     }
 
     /* ---------- rsvp ---------- */

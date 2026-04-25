@@ -66,6 +66,11 @@ public final class CanvasPanel extends JPanel {
         addHierarchyListener(e -> {
             if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) updateRunState();
         });
+        // Pause/resume the ambient timer when the user toggles reduced motion.
+        Motion.addListener(() -> {
+            updateRunState();
+            repaint();
+        });
         SwingUtilities.invokeLater(this::attachFocusListener);
     }
 

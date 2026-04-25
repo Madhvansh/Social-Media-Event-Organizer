@@ -29,6 +29,7 @@ import com.eventorganizer.utils.DateUtil;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -188,9 +189,55 @@ public class EventDetailsDialog extends AbstractAppDialog {
         right.add(legendRow("PENDING",  Theme.TEXT_TERTIARY,
             counts(controller, event).getOrDefault(RSVPStatus.PENDING, 0L)));
 
+        // Per Q7 #4 / #5: the creator can view the full invitee roster with
+        // each person's RSVP status.
+        if (isCreator && !event.getInvitations().isEmpty()) {
+            right.add(Box.createVerticalStrut(Spacing.L));
+            TrackedLabel inviteesLabel = new TrackedLabel("INVITEES", Typography.LABEL,
+                Theme.TEXT_SECONDARY, 0.10f);
+            inviteesLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            right.add(inviteesLabel);
+            right.add(Box.createVerticalStrut(Spacing.S));
+            right.add(buildInviteesList(controller, event));
+        }
+
         // RSVP toggle for non-creator invitees
         if (!isCreator) {
             Invitation inv = event.getInvitationForUser(currentUser == null ? "" : currentUser.getUserId());
+
+            // Self-join for public events the user wasn't explicitly invited to.
+            if (inv == null
+                && event.getType() == EventType.PUBLIC
+                && event.getStatus() != EventStatus.CANCELLED
+                && !event.isPast()
+                && currentUser != null) {
+                right.add(Box.createVerticalStrut(Spacing.L));
+                TrackedLabel join = new TrackedLabel("JOIN", Typography.LABEL,
+                    Theme.TEXT_SECONDARY, 0.10f);
+                join.setAlignmentX(Component.LEFT_ALIGNMENT);
+                right.add(join);
+                right.add(Box.createVerticalStrut(Spacing.S));
+                AuroraButton joinBtn = new AuroraButton("Join event", AuroraButton.Variant.DEFAULT);
+                joinBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
+                joinBtn.addActionListener(e -> {
+                    try {
+                        controller.joinPublicEvent(event.getEventId());
+                        controller.respondRSVP(event.getEventId(), RSVPStatus.ACCEPTED);
+                        Toast.success(parent, "You're going!");
+                        donut.setCounts(loadCounts(controller, event));
+                        if (onChanged != null) onChanged.run();
+                        dispose();
+                    } catch (AppException ex) {
+                        Toast.error(getContentPane(), ex.getMessage());
+                    }
+                });
+                JPanel joinWrap = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+                joinWrap.setOpaque(false);
+                joinWrap.setAlignmentX(Component.LEFT_ALIGNMENT);
+                joinWrap.add(joinBtn);
+                right.add(joinWrap);
+            }
+
             if (inv != null && event.getStatus() != EventStatus.CANCELLED && !event.isPast()) {
                 right.add(Box.createVerticalStrut(Spacing.L));
                 TrackedLabel yourRsvp = new TrackedLabel("YOUR RSVP", Typography.LABEL,
@@ -319,6 +366,65 @@ public class EventDetailsDialog extends AbstractAppDialog {
         row.add(l);
         row.add(v);
 
+        return row;
+    }
+
+    /**
+     * Scrollable invitee roster: avatar + username + RSVP status pill for each
+     * invited user. Shown to the event creator only (Q7 §4 + §5).
+     */
+    private JComponent buildInviteesList(UIController controller, com.eventorganizer.models.Event event) {
+        JPanel rows = new JPanel();
+        rows.setOpaque(false);
+        rows.setLayout(new javax.swing.BoxLayout(rows, javax.swing.BoxLayout.Y_AXIS));
+        rows.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        for (Invitation inv : event.getInvitations()) {
+            User invitee = controller.lookupUser(inv.getInviteeId());
+            String name = invitee == null ? inv.getInviteeId() : invitee.getUsername();
+            rows.add(buildInviteeRow(name, inv.getStatus()));
+        }
+
+        javax.swing.JScrollPane sp = new javax.swing.JScrollPane(rows);
+        sp.setOpaque(false);
+        sp.getViewport().setOpaque(false);
+        sp.setBorder(javax.swing.BorderFactory.createLineBorder(Theme.BORDER_SUBTLE));
+        sp.getVerticalScrollBar().setUnitIncrement(16);
+        sp.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sp.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
+        sp.setPreferredSize(new Dimension(340, 140));
+        return sp;
+    }
+
+    private JPanel buildInviteeRow(String username, RSVPStatus status) {
+        JPanel row = new JPanel(new java.awt.BorderLayout(Spacing.S, 0));
+        row.setOpaque(false);
+        row.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+            javax.swing.BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER_SUBTLE),
+            javax.swing.BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, Spacing.S, 0));
+        left.setOpaque(false);
+        left.add(new com.eventorganizer.ui.components.Avatar(username,
+            com.eventorganizer.ui.components.Avatar.Size.S24));
+        javax.swing.JLabel nameLabel = new javax.swing.JLabel(username);
+        nameLabel.setFont(Typography.BODY);
+        nameLabel.setForeground(Theme.TEXT_PRIMARY);
+        left.add(nameLabel);
+
+        com.eventorganizer.ui.components.Badge.Kind kind;
+        String label;
+        switch (status) {
+            case ACCEPTED: kind = com.eventorganizer.ui.components.Badge.Kind.SUCCESS; label = "GOING";    break;
+            case MAYBE:    kind = com.eventorganizer.ui.components.Badge.Kind.WARNING; label = "MAYBE";    break;
+            case DECLINED: kind = com.eventorganizer.ui.components.Badge.Kind.DANGER;  label = "DECLINED"; break;
+            case PENDING:
+            default:       kind = com.eventorganizer.ui.components.Badge.Kind.DEFAULT; label = "PENDING";
+        }
+        row.add(left, java.awt.BorderLayout.WEST);
+        row.add(new com.eventorganizer.ui.components.Badge(label, kind), java.awt.BorderLayout.EAST);
         return row;
     }
 

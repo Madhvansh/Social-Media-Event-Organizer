@@ -49,7 +49,7 @@ public final class EventCard extends JPanel {
 
     public enum Variant { OWNED, INCOMING }
 
-    private static final int MIN_HEIGHT = 128;
+    private static final int MIN_HEIGHT = 156;
 
     private final Event event;
     private final Variant variant;
@@ -173,38 +173,45 @@ public final class EventCard extends JPanel {
         int titleY = y + fmT.getAscent();
         g.drawString(title, textX, titleY);
 
-        // Badge row below title
+        // Badge row below title — generous gap so title descenders don't kiss the badge top
         int bX = textX;
-        int bY = titleY + 8;
+        int bY = titleY + 12;
+        int badgeBottom = bY + g.getFontMetrics(Typography.LABEL).getHeight() + 2;
         bX += drawBadge(g, bX, bY, event.getType().name(),
             event.getType() == EventType.PUBLIC ? Theme.ACCENT : Theme.ACCENT2,
             event.getType() == EventType.PUBLIC ? Theme.ACCENT_SOFT : Theme.ACCENT2_SOFT);
         bX += 6;
         drawStatusBadge(g, bX, bY);
 
-        // --- Description (middle row) ---
-        int descY = bY + 26;
-        g.setFont(Typography.BODY);
-        FontMetrics fmB = g.getFontMetrics();
-        g.setColor(Theme.TEXT_SECONDARY);
-        String desc = event.getDescription() == null ? "" : event.getDescription().replaceAll("\\s+", " ");
-        String descT = truncate(g, desc, textW);
-        if (!descT.isEmpty()) {
-            g.drawString(descT, textX, descY + fmB.getAscent());
-        }
-
-        // --- Location + RSVP mini (bottom) ---
-        int footerY = h - pad - 2 - lift;
-        g.setColor(Theme.TEXT_TERTIARY);
-        Iconography.paint(g, "pin", textX, footerY - 12, 14f, Theme.TEXT_TERTIARY);
+        // --- Location + RSVP mini (bottom) — anchored to the bottom of the card ---
+        int footerY = h - pad + 4 - lift;
         g.setFont(Typography.SMALL);
         FontMetrics fmS = g.getFontMetrics();
+        int pinSize = 16;
+        int pinY = footerY - fmS.getAscent() + 1;
+        Iconography.paint(g, "pin", textX, pinY, pinSize, Theme.TEXT_TERTIARY);
+        g.setColor(Theme.TEXT_TERTIARY);
         String loc = event.getLocation() == null || event.getLocation().isEmpty()
             ? "—" : event.getLocation();
-        g.drawString(loc, textX + 18, footerY);
+        g.drawString(loc, textX + pinSize + 6, footerY);
 
-        // RSVP mini-indicator
-        drawRsvpMini(g, w - pad - 84, footerY - 10);
+        // --- Description (between badges and footer) ---
+        int descTop = badgeBottom + 12;
+        int descBottom = pinY - 6;
+        if (descBottom - descTop >= 14) {
+            g.setFont(Typography.BODY);
+            FontMetrics fmB = g.getFontMetrics();
+            g.setColor(Theme.TEXT_SECONDARY);
+            String desc = event.getDescription() == null
+                ? "" : event.getDescription().replaceAll("\\s+", " ");
+            String descT = truncate(g, desc, textW - 100);
+            if (!descT.isEmpty()) {
+                g.drawString(descT, textX, descTop + fmB.getAscent());
+            }
+        }
+
+        // RSVP mini-indicator (right edge of footer row)
+        drawRsvpMini(g, w - pad - 84, footerY - fmS.getAscent());
     }
 
     private int drawBadge(Graphics2D g, int x, int y, String text, Color fg, Color bg) {

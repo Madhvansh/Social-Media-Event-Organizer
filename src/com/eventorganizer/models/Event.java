@@ -16,7 +16,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class Event implements Reportable {
+public abstract class Event implements Reportable, java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private final String eventId;
     private String name;
     private String description;
