@@ -20,7 +20,7 @@ public final class PasswordHasher {
         return salt;
     }
 
-    /** Primary API: hash a char[] password. Does not zero the input. Caller owns lifetime. */
+    /** Primary API: hash a char[] password. Does not zero the input. Caller owns lifetime*/
     public static String hash(char[] rawPassword, byte[] salt) {
         if (rawPassword == null || salt == null) {
             throw new IllegalArgumentException("password and salt must not be null");
