@@ -35,12 +35,6 @@ public class NotificationService {
         }
     }
 
-    /**
-     * Event-update dispatch that coalesces rapid edits: if the recipient already has
-     * an EventUpdateNotification for the same eventId whose timestamp is within the
-     * {@link Limits#EDIT_COALESCE_SECONDS} window, the old entry is removed so the
-     * newer message replaces it (same position-at-end, fresh timestamp).
-     */
     public void pushCoalesced(User recipient, EventUpdateNotification n) {
         if (recipient == null || n == null) return;
         try {

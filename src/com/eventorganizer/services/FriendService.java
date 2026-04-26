@@ -162,13 +162,7 @@ public class FriendService {
             .ifPresent(receiver -> receiver.removeIncomingFriendRequest(requestId));
     }
 
-    /**
-     * Removes a friendship in both directions. <b>Does not</b> auto-revoke outstanding
-     * invitations between the two users — an existing invitation to a private event
-     * remains valid even after the creator un-friends the invitee. This is deliberate:
-     * cancelling an event and removing a friend are separate user intents, and collapsing
-     * them here would silently delete invitations the user may still want to keep.
-     */
+
     public void removeFriend(String username) {
         Validator.requireNonBlank(username, "Username");
         User current = requireLoggedIn();

@@ -57,7 +57,6 @@ public class UserService {
         return u;
     }
 
-    /** Legacy String overload — delegates, zeroes nothing (caller retains ownership). */
     public User register(String username, String email, String rawPassword) {
         return register(username, email, rawPassword == null ? new char[0] : rawPassword.toCharArray());
     }
@@ -66,9 +65,6 @@ public class UserService {
         DataStore ds = DataStore.INSTANCE;
         User u = ds.findUserByUsername(username).orElse(null);
         if (u == null) {
-            // Burn a dummy PBKDF2 so the unknown-username path costs the same
-            // wall-clock time as the real verify — prevents username enumeration
-            // via timing observation.
             PasswordHasher.burnDummyVerify(rawPassword);
             throw new AuthenticationException("Invalid credentials",
                 ErrorCode.ERR_AUTH_INVALID_CREDENTIALS);
@@ -77,8 +73,6 @@ public class UserService {
             throw new AuthenticationException("Invalid credentials",
                 ErrorCode.ERR_AUTH_INVALID_CREDENTIALS);
         }
-        // Lazy re-hash: if the stored digest predates the current scheme, upgrade
-        // transparently on successful login (A2).
         if (PasswordHasher.needsRehash(u.getPasswordHash())) {
             u.setPasswordHash(PasswordHasher.hash(rawPassword, u.getSalt()));
         }
@@ -124,7 +118,6 @@ public class UserService {
             }
             String trimmed = email.trim();
             DataStore ds = DataStore.INSTANCE;
-            // If the new email is already taken by another user, reject.
             ds.findUserByEmail(trimmed).ifPresent(other -> {
                 if (!other.getUserId().equals(u.getUserId())) {
                     throw new DuplicateEmailException(

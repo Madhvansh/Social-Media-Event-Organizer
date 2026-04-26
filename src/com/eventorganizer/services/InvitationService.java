@@ -166,13 +166,7 @@ public class InvitationService {
         return result;
     }
 
-    /**
-     * Self-invite to a public event. Lets the current user attach an invitation
-     * to a {@link com.eventorganizer.models.PublicEvent} they were not
-     * explicitly invited to, then they can RSVP normally. No-op if already
-     * invited. Throws on private events, on past/cancelled events, on
-     * inviting yourself to your own event.
-     */
+    /* Self-invite to a public event. */
     public Invitation joinPublicEvent(String eventId) {
         Validator.requireNonBlank(eventId, "eventId");
         User user = requireLoggedIn();
@@ -205,7 +199,9 @@ public class InvitationService {
             ds.unindexInvitation(event.getEventId(), user.getUserId());
             throw e;
         }
-        // Notify the creator so they know someone joined.
+        
+        /* Notify the creator so they know someone joined. */
+        
         ds.findUserById(event.getCreatorId()).ifPresent(creator ->
             notifications.push(creator, new InvitationNotification(
                 IdGenerator.nextNotificationId(),
