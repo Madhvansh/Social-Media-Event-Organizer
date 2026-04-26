@@ -1,4 +1,4 @@
-[README](README.md) • [UML Diagrams](docs/UML.md)
+[README](README.md) • [UML Diagrams](docs/UML.md) • [Presentation](OOPs%20Project%20Presentation.pdf)
 
 # Event Organizer
 
