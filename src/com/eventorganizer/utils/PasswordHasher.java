@@ -10,17 +10,7 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
 
-/**
- * Password hashing backed by PBKDF2-HMAC-SHA256.
- *
- * Serialized hash format: {@code "pbkdf2$" + iters + "$" + base64(derivedKey)}.
- * The iteration count is embedded so future bumps are detectable at verify time
- * (see {@link #needsRehash(String)}).
- *
- * Legacy salted-SHA-256 hashes (no prefix) are still accepted by {@link #verify};
- * callers that observe {@code needsRehash == true} after a successful verify
- * should re-hash the password using the current scheme (lazy upgrade path).
- */
+/** Handles password hashing using PBKDF2. Also supports older SHA-256 hashes for backwards compatibility. */
 public final class PasswordHasher {
     private static final String PBKDF2_ALG = "PBKDF2WithHmacSHA256";
     private static final int PBKDF2_ITERATIONS = 150_000;
@@ -29,10 +19,7 @@ public final class PasswordHasher {
 
     private static final SecureRandom RNG = new SecureRandom();
 
-    // Sentinel salt + hash used by burnDummyVerify() to keep login latency indistinguishable
-    // between known and unknown usernames. Initialized lazily (to amortize class-load cost)
-    // and reused for every subsequent dummy verify. Not a secret — its only role is to force
-    // the same PBKDF2 work a real verify would do.
+    // fixed salt+hash used to make login timing consistent for unknown usernames
     private static volatile byte[] SENTINEL_SALT;
     private static volatile String SENTINEL_HASH;
 
@@ -102,12 +89,7 @@ public final class PasswordHasher {
         if (pw != null) Arrays.fill(pw, '\0');
     }
 
-    /**
-     * Runs a dummy PBKDF2 verify against a sentinel salt+hash. Used by login paths that
-     * hit a non-existent user, so the wall-clock cost is indistinguishable from a real
-     * password verify. The result is always discarded; caller must still throw an
-     * authentication exception regardless.
-     */
+    /** Runs a fake hash check so login takes the same amount of time even if the username doesn't exist. */
     public static void burnDummyVerify(char[] rawPassword) {
         byte[] salt = SENTINEL_SALT;
         String hash = SENTINEL_HASH;
@@ -121,7 +103,7 @@ public final class PasswordHasher {
                 hash = SENTINEL_HASH;
             }
         }
-        // Discard result — timing is the only thing that matters here.
+        // result doesn't matter, just want consistent timing
         char[] pw = rawPassword == null ? new char[0] : rawPassword;
         verifyPbkdf2(pw, salt, hash);
     }

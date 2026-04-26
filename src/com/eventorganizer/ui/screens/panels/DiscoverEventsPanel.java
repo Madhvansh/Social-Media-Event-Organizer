@@ -30,7 +30,7 @@ import java.util.Set;
  * Discover panel — shows two feeds via a {@link SegmentedControl}:
  * <ul>
  *   <li><b>Public</b> — every active, upcoming public event the user didn't
- *       create (per Q7 spec: public events are visible to everyone).</li>
+ *       create.</li>
  *   <li><b>Invited</b> — events the user has a pending invitation to.</li>
  * </ul>
  * Cards in both feeds use {@link EventCard.Variant#INCOMING} (amethyst accent)

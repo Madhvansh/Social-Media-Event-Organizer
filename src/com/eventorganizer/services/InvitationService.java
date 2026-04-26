@@ -70,7 +70,7 @@ public class InvitationService {
         try {
             ds.indexInvitation(inv);
         } catch (RuntimeException e) {
-            // Invariant: either both the event list and the index contain `inv`, or neither does.
+            // roll back both sides if indexing fails
             event.removeInvitation(inv);
             ds.unindexInvitation(event.getEventId(), invitee.getUserId());
             throw e;
@@ -166,13 +166,7 @@ public class InvitationService {
         return result;
     }
 
-    /**
-     * Self-invite to a public event. Lets the current user attach an invitation
-     * to a {@link com.eventorganizer.models.PublicEvent} they were not
-     * explicitly invited to, then they can RSVP normally. No-op if already
-     * invited. Throws on private events, on past/cancelled events, on
-     * inviting yourself to your own event.
-     */
+    /** Lets the current user join a public event they weren't invited to. */
     public Invitation joinPublicEvent(String eventId) {
         Validator.requireNonBlank(eventId, "eventId");
         User user = requireLoggedIn();

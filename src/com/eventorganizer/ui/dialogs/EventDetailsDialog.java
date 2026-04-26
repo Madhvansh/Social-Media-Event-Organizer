@@ -189,8 +189,7 @@ public class EventDetailsDialog extends AbstractAppDialog {
         right.add(legendRow("PENDING",  Theme.TEXT_TERTIARY,
             counts(controller, event).getOrDefault(RSVPStatus.PENDING, 0L)));
 
-        // Per Q7 #4 / #5: the creator can view the full invitee roster with
-        // each person's RSVP status.
+        // show the full invitee list with RSVP status to the event creator
         if (isCreator && !event.getInvitations().isEmpty()) {
             right.add(Box.createVerticalStrut(Spacing.L));
             TrackedLabel inviteesLabel = new TrackedLabel("INVITEES", Typography.LABEL,
@@ -371,7 +370,7 @@ public class EventDetailsDialog extends AbstractAppDialog {
 
     /**
      * Scrollable invitee roster: avatar + username + RSVP status pill for each
-     * invited user. Shown to the event creator only (Q7 §4 + §5).
+     * invited user. Only shown to the event creator.
      */
     private JComponent buildInviteesList(UIController controller, com.eventorganizer.models.Event event) {
         JPanel rows = new JPanel();

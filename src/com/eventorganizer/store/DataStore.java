@@ -34,7 +34,7 @@ public enum DataStore {
     private final ConcurrentHashMap<String, ConcurrentHashMap<String, Invitation>> invitationIndex = new ConcurrentHashMap<>();
     // min(id1,id2) + "|" + max(id1,id2) -> latest requestId between that pair
     private final ConcurrentHashMap<String, String> friendRequestBetweenIndex = new ConcurrentHashMap<>();
-    // creatorUserId -> set of eventIds (A8)
+    // creatorUserId -> set of eventIds
     private final ConcurrentHashMap<String, Set<String>> eventsByCreator = new ConcurrentHashMap<>();
 
     private volatile User currentUser;
@@ -46,7 +46,7 @@ public enum DataStore {
     /** Package-private for tests only. */
     void setClock(Clock c) { this.clock = c == null ? Clock.systemDefaultZone() : c; }
 
-    /** Null-safe static accessor used by utility code that cannot depend on singleton init order. */
+    /** Returns the current clock, or the system default if not set. */
     public static Clock getClockOrDefault() {
         try {
             Clock c = INSTANCE.clock;
@@ -112,7 +112,7 @@ public enum DataStore {
         return Collections.unmodifiableCollection(eventsById.values());
     }
 
-    /** O(K) event-id lookup by creator (A8). Returns a snapshot view. */
+    /** Returns the set of event IDs created by the given user. */
     public Set<String> eventIdsForCreator(String creatorId) {
         if (creatorId == null) return Collections.emptySet();
         Set<String> ids = eventsByCreator.get(creatorId);

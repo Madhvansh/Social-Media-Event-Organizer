@@ -15,3 +15,5 @@
 [INFO] com.eventorganizer.utils.ShutdownHook: shutting down
 [INFO] com.eventorganizer.ui.theme.FontLoader: FontLoader: no vendored fonts registered — relying on system fallback chain.
 [INFO] com.eventorganizer.utils.ShutdownHook: shutting down
+[INFO] com.eventorganizer.ui.theme.FontLoader: FontLoader: no vendored fonts registered — relying on system fallback chain.
+[INFO] com.eventorganizer.utils.ShutdownHook: shutting down

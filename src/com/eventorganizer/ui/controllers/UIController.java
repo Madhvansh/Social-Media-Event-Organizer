@@ -24,11 +24,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Thin facade over the seven services. Every UI action funnels through here so
- * screens never touch DataStore or services directly, and exceptions translate
- * into toasts at a single seam (callers wrap calls in try/catch(AppException)).
- */
+/** Connects the UI to the service layer. All screen actions go through here. */
 public class UIController {
 
     private final UserService userSvc = new UserService();

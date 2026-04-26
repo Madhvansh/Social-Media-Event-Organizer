@@ -49,8 +49,7 @@ public abstract class Event implements Reportable, java.io.Serializable {
 
     /**
      * Sets the event name. Non-null, non-blank, capped at {@link Limits#EVENT_NAME_MAX}.
-     * Services are expected to pre-validate and trim; this setter is the entity-level
-     * invariant guard (belt-and-braces).
+     * Services validate before calling this, but this checks too just in case.
      */
     public void setName(String name) {
         if (name == null || name.trim().isEmpty()) {
@@ -80,9 +79,7 @@ public abstract class Event implements Reportable, java.io.Serializable {
 
     /**
      * Sets the event date/time. Rejects null and dates beyond {@link Limits#FAR_FUTURE_YEARS}.
-     * Past dates are permitted so {@link com.eventorganizer.services.EventService#editEvent}
-     * (which pre-validates future-dates) and test fixtures still compose; callers
-     * wanting to forbid past dates must check beforehand.
+     * Past dates are allowed here since test fixtures need them; callers should validate if needed.
      */
     public void setDateTime(LocalDateTime dt) {
         if (dt == null) {

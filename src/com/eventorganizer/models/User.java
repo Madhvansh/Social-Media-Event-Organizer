@@ -117,11 +117,7 @@ public class User implements Reportable, java.io.Serializable {
         return new ArrayList<>(outgoingFriendRequestIds);
     }
 
-    /**
-     * Adds a notification, evicting the oldest read notification first if the user is at the cap.
-     * Returns {@code false} (without modifying state) when the user is at the cap and every
-     * existing notification is still unread — unread items are never silently dropped.
-     */
+    /** Adds a notification. If the list is full, removes the oldest read one to make room. Returns false if nothing can be removed. */
     public boolean addNotification(Notification n) {
         if (n == null) return false;
         int cap = Limits.NOTIFICATIONS_PER_USER_MAX;

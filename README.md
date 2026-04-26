@@ -1,58 +1,35 @@
-[README](README.md) • [UML Diagrams](UML.md)
-  
-# Event Organizer (Q7 — Social Media Event Organizer)
+[README](README.md) • [UML Diagrams](docs/UML.md)
 
-A Java desktop app that lets users register, manage their friends, create
-public/private events, invite friends, RSVP, and read reports and notifications.
-Built to showcase object-oriented design: every spec feature maps onto a
-clear encapsulated model, abstract inheritance hierarchy, and polymorphic
-dispatch. The UI is Swing + FlatLaf (dark theme); data lives in memory.
+# Event Organizer
+
+A Java desktop application I built for managing social events, friends, and
+invitations. Users can register, create public or private events, invite friends,
+RSVP, and view notifications and activity reports. The UI is built with Swing and
+FlatLaf (dark theme) and all data lives in memory.
 
 # Architecture
 
 ## UML Class Diagrams
 
-This document captures the full class structure of the Event Organizer
-project as a set of focused UML class diagrams. Each diagram is rendered in
-[Mermaid](https://mermaid.js.org/) syntax — GitHub, VS Code's Markdown
-preview, and `mmdc` all render Mermaid natively.
-
-The diagrams are split by concern so each one stays readable; together they
-cover every class and relationship in the codebase.
+The diagrams are split by concern so each one stays readable.
 
 | # | Diagram | Concern |
 |---|---|---|
 | 1 | [Architectural overview](#1-architectural-overview) | Package layout + dependency arrows |
-| 2 | [Domain model — entities](#2-domain-model--entities) | `User`, `Event`, `Invitation`, `FriendRequest` and OOP relationships |
-| 3 | [Polymorphic notifications](#3-polymorphic-notifications) | `Notification` abstract + 4 subclasses |
+| 2 | [Domain model — entities](#2-domain-model--entities) | `User`, `Event`, `Invitation`, `FriendRequest` |
+| 3 | [Notifications](#3-notifications) | `Notification` abstract + 4 subclasses |
 | 4 | [Enumerations](#4-enumerations) | The four enum types |
 | 5 | [DTOs (report carriers)](#5-dtos-report-carriers) | Read-only reporting types |
-| 6 | [Service layer](#6-service-layer) | Business-logic facades + their dependencies |
-| 7 | [Persistence + DataStore](#7-persistence--datastore) | Singleton store, snapshot, ID generator |
-| 8 | [Exception hierarchy](#8-exception-hierarchy) | `AppException` family used across layers |
+| 6 | [Service layer](#6-service-layer) | Business-logic classes + their dependencies |
+| 7 | [Persistence + DataStore](#7-persistence--datastore) | Data store, snapshot, ID generator |
+| 8 | [Exception hierarchy](#8-exception-hierarchy) | `AppException` family |
 | 9 | [UI controller seam](#9-ui-controller-seam) | How the Swing UI talks to services |
-
-UML notation key (Mermaid `classDiagram`):
-
-| Symbol | Meaning |
-|---|---|
-| `<|--` | inheritance (subclass → superclass) |
-| `<|..` | interface implementation |
-| `*--` | composition (lifetime owned) |
-| `o--` | aggregation (lifetime independent) |
-| `-->` | directional association / dependency |
-| `..>` | dependency (uses but does not own) |
-| `+` / `-` / `#` | public / private / protected member |
-| `<<abstract>>` / `<<enum>>` / `<<interface>>` / `<<singleton>>` | stereotypes |
 
 ---
 
 ## 1. Architectural overview
 
-A layered design with strict downward dependencies — the UI talks to a
-controller, the controller talks to services, services talk to the
-DataStore, and the DataStore talks to the model classes. Persistence + the
-shutdown hook bracket the application lifecycle.
+Shows how the main parts of the app are connected.
 
 ```mermaid
 classDiagram
@@ -122,10 +99,7 @@ classDiagram
 
 ## 2. Domain model — entities
 
-Core OOP relationships. `Event` is abstract with two concrete subclasses;
-`PrivateEvent.canInvite` overrides the friends-only rule. `User` and `Event`
-both implement the `Reportable` interface so the `ReportService` can treat
-them uniformly.
+The main data classes and how they relate to each other.
 
 ```mermaid
 classDiagram
@@ -227,26 +201,11 @@ classDiagram
     User  "*" -- "*" User : friends (by id)
 ```
 
-Key OOP patterns visible here:
-
-- **Inheritance + polymorphism:** `PublicEvent` / `PrivateEvent` override the
-  abstract `getType()` and `canInvite()`. `EventService` works against the
-  `Event` supertype; private-event invitation rules are dispatched at runtime.
-- **Interface segregation:** `Reportable` lets `ReportService` treat heterogeneous
-  classes (`User`, `Event`) uniformly without leaking persistence concerns.
-- **Composite equality on `Invitation`:** `equals/hashCode` on `(eventId, inviteeId)` —
-  enforced by `ModelInvariantsTest`.
-- **Identity equality on `Event`, `User`, `FriendRequest`:** by primary id only.
-
 ---
 
-## 3. Polymorphic notifications
+## 3. Notifications
 
-The notification system is a textbook polymorphism example: one abstract
-parent, four concrete subclasses, each with its own category label and
-optional reference id (`eventId` or `requestId`). The UI's
-`NotificationRow` renderer uses `getCategory()` to pick an icon + colour
-without ever instanceof-checking.
+The four types of notification, each with its own category.
 
 ```mermaid
 classDiagram
@@ -294,9 +253,7 @@ classDiagram
 
 ## 4. Enumerations
 
-Four enum types pin down the system's discrete states. They are
-serializable and immutable; everything else in the model gates state
-transitions through services.
+The four enums used across the app.
 
 ```mermaid
 classDiagram
@@ -335,9 +292,7 @@ classDiagram
 
 ## 5. DTOs (report carriers)
 
-Pure data objects produced by `ReportService` and `InvitationService`.
-They cross the controller seam by value — no domain mutation possible
-through them.
+Data objects used for reports.
 
 ```mermaid
 classDiagram
@@ -385,11 +340,7 @@ classDiagram
 
 ## 6. Service layer
 
-Seven services, each owning a single concern. They are stateless façades —
-all state lives in `DataStore` — and they cross-call only through
-`NotificationService` (which everyone uses to emit notifications).
-`UIController` is the *only* outside caller; tests reach the services
-directly.
+The seven service classes and their dependencies.
 
 ```mermaid
 classDiagram
@@ -478,11 +429,7 @@ classDiagram
 
 ## 7. Persistence + DataStore
 
-`DataStore` is an enum singleton — guaranteed thread-safe init by the JVM
-and trivial to mock via `TestHooks`. `Persistence` snapshots it via Java
-serialization to a single file (`eventorganizer.data`) at JVM exit, then
-loads it on next launch so accounts, events, invitations, and friendships
-all survive between runs.
+DataStore holds all the data. Persistence saves and loads it.
 
 ```mermaid
 classDiagram
@@ -558,10 +505,7 @@ classDiagram
 
 ## 8. Exception hierarchy
 
-A 3-level tree under `AppException`. Each leaf carries an `ErrorCode` so
-the UI's single try/catch seam can map by code without string matching.
-`UnauthorizedException` is the only 4-deep node — it specialises
-`AuthorizationException` for "no current session" specifically.
+Custom exception types used throughout the app.
 
 ```mermaid
 classDiagram
@@ -628,11 +572,7 @@ classDiagram
 
 ## 9. UI controller seam
 
-The Swing UI never touches `DataStore` or any service directly. Every UI
-action funnels through `UIController`, which translates each call into a
-service call. `Toast.error` at the call site catches every `AppException`
-that bubbles up — that's the single error-handling seam for the entire
-front-end.
+How the Swing UI talks to the service layer.
 
 ```mermaid
 classDiagram
@@ -713,65 +653,7 @@ classDiagram
 
 ---
 
-## OOP design principles map
-
-| Principle | Where it lives in the code |
-|---|---|
-| **Encapsulation** | All model fields are `private`; mutation only via setters that delegate to `Validator` (e.g. `Event.setLocation`, `User.updateProfile`). `passwordHash` and `salt` are read-only after construction except via `setPasswordHash`. |
-| **Inheritance** | `Event ← PublicEvent / PrivateEvent`, `Notification ← {Invitation, EventUpdate, RSVP, FriendRequest}Notification`, exception 3-level tree. |
-| **Polymorphism** | `Event.getType()` / `canInvite()` dispatched at runtime; `ReportService` treats `Reportable` uniformly across `User` and `Event`. `NotificationService` pushes any `Notification` subtype. |
-| **Abstraction** | `Event`, `Notification` are abstract; `Reportable` is the lone interface. The UI talks only to `UIController` (façade), never to services or the store. |
-| **Composition** | `Event` *owns* its `Invitation` list (lifetime-bound); `User` *owns* its `Notification` list. |
-| **Aggregation** | `User` *references* friends by `userId` (lifetime-independent). `DataStore` aggregates all entities by id. |
-| **Singleton** | `DataStore` is an `enum INSTANCE` — JVM-guaranteed thread-safe init. |
-| **Façade** | `UIController` is the single entry point from the Swing layer to the seven services. |
-| **Strategy** | `Easing` curves and `AuroraButton.Variant` (`DEFAULT`/`OUTLINE`/`GHOST`/`DANGER`) pick the rendering strategy per instance. |
-| **Observer** | `Motion.addListener` lets `CanvasPanel` and `Constellation` pause their ambient timers the instant the user toggles reduced motion. |
-
----
-
-## Rendering instructions
-
-To regenerate these as PNG/SVG (e.g. for a written report):
-
-```bash
-# install once
-npm install -g @mermaid-js/mermaid-cli
-
-# render every code block in this file
-mmdc -i docs/UML.md -o docs/UML.png
-```
-
-
-```
-+-------------------------------------------------------------+
-|  UI  (Swing + FlatLaf)                                      |
-|  ui/App, ui/screens/{Auth,Dashboard,panels/...}, dialogs/   |
-|                           |                                 |
-|                           v                                 |
-|  UIController  (single facade, 1 try/catch seam)            |
-|                           |                                 |
-|                           v                                 |
-|  Services: UserService, EventService, InvitationService,    |
-|            FriendService, RSVPService, NotificationService, |
-|            ReportService                                    |
-|                           |                                 |
-|                           v                                 |
-|  Models:  User, Event(PublicEvent/PrivateEvent), Invitation,|
-|           FriendRequest, Notification + 4 subclasses, DTOs  |
-|                           |                                 |
-|                           v                                 |
-|  Store:   DataStore (enum singleton; usernameIndex,         |
-|           emailIndex, invitationIndex, friendRequestIndex)  |
-+-------------------------------------------------------------+
-```
-
-Exceptions are unchecked and rooted at `AppException`; every service throws a
-typed subclass on failure and the UI catches once at the screen seam and
-surfaces a `Toast`. Time reads flow through `DataStore.INSTANCE.getClock()`
-so tests can inject a fixed clock.
-
-## Build / run / test
+## How to Run
 
 ```bash
 # Compile (Unix)
@@ -792,39 +674,50 @@ Dependencies vendored under `lib/`:
 
 No Maven / Gradle required. JDK 11+ is sufficient.
 
-Seeded accounts (ready on first launch):
+## Seeded accounts
+
+The app comes with a few sample accounts ready to use on first launch:
 - `alice / alice123`
 - `bob / bob12345`
 - `carol / carol123`
 
-The seed also populates cross-user state (pending friend request,
-invitations, RSVPs) so every panel shows content on alice's first login.
+These accounts already have some cross-user state set up (a pending friend request,
+invitations, RSVPs) so every panel shows content straight away when you log in as alice.
 
-## Spec features (7) → entry points
+## Where to find the logic
 
-| # | Feature | Entry point |
-|---|---|---|
-| 1 | User registration / login / profile | `services/UserService.java` |
-| 2 | Create / edit / cancel events | `services/EventService.java` |
-| 3 | Send / accept / reject / withdraw friend requests | `services/FriendService.java` |
-| 4 | Invite friends (public + private rules) | `services/InvitationService.java` |
-| 5 | RSVP (accept / decline / maybe) | `services/RSVPService.java` |
-| 6 | Notifications (4 kinds, cap + coalesce) | `services/NotificationService.java` |
-| 7 | Reports (per-user activity + per-event summary) | `services/ReportService.java` |
+The core business logic lives in `src/com/eventorganizer/services/`. Each service
+handles one area of the app:
 
-## OOP principles
+- `UserService` — registration, login, profile, and password changes
+- `EventService` — creating, editing, and cancelling events
+- `FriendService` — sending, accepting, rejecting, and cancelling friend requests
+- `InvitationService` — inviting friends, revoking invites, joining public events
+- `RSVPService` — responding to invitations (accept / decline / maybe)
+- `NotificationService` — pushing and reading notifications
+- `ReportService` — building activity and event summary reports
 
-See [docs/OOP_EVIDENCE.md](docs/OOP_EVIDENCE.md) for a complete file:line map.
-Highlights:
+The UI talks to all of these through `UIController`, so the screens never access
+the data store directly.
 
-- `abstract class Event` with `canInvite` overridden by `PublicEvent` /
-  `PrivateEvent` — polymorphic dispatch at `InvitationService.java:51`.
-- `abstract class Notification` with 4 concrete subclasses, each supplying a
-  `getCategory()`.
-- `interface Reportable` implemented by both `Event` and `User`.
-- `enum DataStore { INSTANCE; }` — the canonical singleton.
-- 68 JUnit 5 tests (`test/com/eventorganizer/`) — all passing.
+## Implementation Highlights
 
-## Smoke test
+- I used an abstract `Event` class with two concrete subclasses (`PublicEvent` and
+  `PrivateEvent`). Each one overrides the `canInvite()` method to enforce different
+  invitation rules — private events only allow the creator's friends to be invited.
 
-See [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md) for a 10-step UI smoke test.
+- I modelled notifications the same way: an abstract `Notification` class with four
+  concrete types (`InvitationNotification`, `EventUpdateNotification`,
+  `RSVPNotification`, `FriendRequestNotification`). The UI reads `getCategory()` on
+  each one to pick the right icon, without ever checking which subclass it is.
+
+- Both `Event` and `User` implement the `Reportable` interface, which lets
+  `ReportService` generate summaries for either type without caring about the
+  specific class.
+
+- I chose to use an enum for `DataStore` so there is always exactly one instance of
+  the data store running in the app. It saves and loads to a file (`eventorganizer.data`)
+  on startup and shutdown, so accounts and events survive between runs.
+
+- I included 68 JUnit tests in `test/com/eventorganizer/` that cover the model
+  behaviour and service logic.

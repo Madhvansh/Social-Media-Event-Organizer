@@ -19,7 +19,7 @@ public class Main {
         // Load reduced-motion + other UI prefs before the rest of the UI initialises.
         Preferences.load();
 
-        // Register vendored Inter / JetBrains Mono before the LAF + Theme read them.
+        // load fonts before setting up the theme
         FontLoader.load();
 
         try {
@@ -32,7 +32,7 @@ public class Main {
 
         Theme.applyToUIManager();
 
-        // Restore prior session if a snapshot exists; otherwise plant the demo seed.
+        // load saved data if it exists, or create some sample accounts
         boolean restored = Persistence.load();
         if (!restored) {
             DataStore.INSTANCE.seed();
