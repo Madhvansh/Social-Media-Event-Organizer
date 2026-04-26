@@ -5,7 +5,41 @@
 A Java desktop application I built for managing social events, friends, and
 invitations. Users can register, create public or private events, invite friends,
 RSVP, and view notifications and activity reports. The UI is built with Swing and
-FlatLaf (dark theme) and all data lives in memory.
+FlatLaf and all data lives in memory.
+
+---
+
+## How to Run
+
+```bash
+# Git Bash (Unix-like shell)
+./build.sh
+# Windows Command Prompt (cmd)
+build.bat
+# Windows PowerShell (requires .\ prefix)
+.\build.bat
+
+# Git Bash (Unix-like shell)
+./run.sh    
+# Windows Command Prompt (cmd)
+run.bat
+# Windows PowerShell (requires .\ prefix)
+.\run.bat
+
+# Git Bash (Unix-like shell)
+./test.sh   
+# Windows Command Prompt (cmd)
+test.bat
+# Windows PowerShell (requires .\ prefix)
+.\test.bat
+```
+
+Dependencies vendored under `lib/`:
+- `flatlaf-3.4.jar` 
+- `junit-platform-console-standalone-1.10.2.jar` (test runner)
+
+No Maven / Gradle required. JDK 11+ is sufficient.
+
 
 # Architecture
 
@@ -650,29 +684,6 @@ classDiagram
 
     UIController --> ServiceLayer : delegates
 ```
-
----
-
-## How to Run
-
-```bash
-# Compile (Unix)
-./build.sh
-# Compile (Windows)
-build.bat
-
-# Launch the app
-./run.sh    # or run.bat
-
-# Run the JUnit 5 suite (68 tests)
-./test.sh   # or test.bat
-```
-
-Dependencies vendored under `lib/`:
-- `flatlaf-3.4.jar` (dark theme)
-- `junit-platform-console-standalone-1.10.2.jar` (test runner)
-
-No Maven / Gradle required. JDK 11+ is sufficient.
 
 ## Seeded accounts
 
