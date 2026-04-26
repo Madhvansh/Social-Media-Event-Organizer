@@ -41,7 +41,7 @@ so tests can inject a fixed clock.
 ## Build / run / test
 
 ```bash
-# Compile (Unix)
+# Compile (Unix) and git bash
 ./build.sh
 # Compile (Windows)
 build.bat
