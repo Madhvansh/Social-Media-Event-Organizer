@@ -720,7 +720,7 @@ classDiagram
 
 ## Rendering instructions
 
-To regenerate these as PNG/SVG (e.g. for a written report):
+To regenerate these as PNG/SVG:
 
 ```bash
 # install once
@@ -729,6 +729,3 @@ npm install -g @mermaid-js/mermaid-cli
 # render every code block in this file
 mmdc -i docs/UML.md -o docs/UML.png
 ```
-
-GitHub renders the diagrams inline natively — no extra tooling needed when
-viewing in the browser.

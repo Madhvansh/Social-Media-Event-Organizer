@@ -8,9 +8,9 @@ Built to showcase object-oriented design: every spec feature maps onto a
 clear encapsulated model, abstract inheritance hierarchy, and polymorphic
 dispatch. The UI is Swing + FlatLaf (dark theme); data lives in memory.
 
-## Architecture
+# Architecture
 
-# Event Organizer — UML Class Diagrams
+## UML Class Diagrams
 
 This document captures the full class structure of the Event Organizer
 project as a set of focused UML class diagrams. Each diagram is rendered in
