@@ -26,23 +26,27 @@ public enum DataStore {
     INSTANCE;
 
     private final ConcurrentHashMap<String, User> usersById = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, String> usernameIndex = new ConcurrentHashMap<>();   
-    private final ConcurrentHashMap<String, String> emailIndex = new ConcurrentHashMap<>();      
+    private final ConcurrentHashMap<String, String> usernameIndex = new ConcurrentHashMap<>();   // normalized username -> userId
+    private final ConcurrentHashMap<String, String> emailIndex = new ConcurrentHashMap<>();      // normalized email    -> userId
     private final ConcurrentHashMap<String, Event> eventsById = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, FriendRequest> friendRequestsById = new ConcurrentHashMap<>();
+    // eventId -> (inviteeId -> Invitation)
     private final ConcurrentHashMap<String, ConcurrentHashMap<String, Invitation>> invitationIndex = new ConcurrentHashMap<>();
+    // min(id1,id2) + "|" + max(id1,id2) -> latest requestId between that pair
     private final ConcurrentHashMap<String, String> friendRequestBetweenIndex = new ConcurrentHashMap<>();
+    // creatorUserId -> set of eventIds (A8)
     private final ConcurrentHashMap<String, Set<String>> eventsByCreator = new ConcurrentHashMap<>();
 
     private volatile User currentUser;
     private volatile boolean seeded = false;
     private volatile Clock clock = Clock.systemDefaultZone();
 
-    
+    // --- Clock ---
     public Clock getClock() { return clock; }
-    
+    /** Package-private for tests only. */
     void setClock(Clock c) { this.clock = c == null ? Clock.systemDefaultZone() : c; }
 
+    /** Null-safe static accessor used by utility code that cannot depend on singleton init order. */
     public static Clock getClockOrDefault() {
         try {
             Clock c = INSTANCE.clock;
@@ -52,7 +56,7 @@ public enum DataStore {
         }
     }
 
-    
+    // --- Users ---
     public void saveUser(User u) {
         usersById.put(u.getUserId(), u);
         usernameIndex.put(Normalize.identifier(u.getUsername()), u.getUserId());
@@ -89,7 +93,7 @@ public enum DataStore {
         return Collections.unmodifiableCollection(usersById.values());
     }
 
-    
+    // --- Events ---
     public void saveEvent(Event e) {
         eventsById.put(e.getEventId(), e);
         invitationIndex.computeIfAbsent(e.getEventId(), k -> new ConcurrentHashMap<>());
@@ -108,14 +112,14 @@ public enum DataStore {
         return Collections.unmodifiableCollection(eventsById.values());
     }
 
-    
+    /** O(K) event-id lookup by creator (A8). Returns a snapshot view. */
     public Set<String> eventIdsForCreator(String creatorId) {
         if (creatorId == null) return Collections.emptySet();
         Set<String> ids = eventsByCreator.get(creatorId);
         return ids == null ? Collections.emptySet() : Collections.unmodifiableSet(ids);
     }
 
-    
+    // --- Invitations (index-only; Event also holds its own list) ---
     public void indexInvitation(Invitation inv) {
         if (inv == null) return;
         invitationIndex
@@ -139,7 +143,7 @@ public enum DataStore {
         return findInvitation(eventId, inviteeId).isPresent();
     }
 
-    
+    // --- Friend requests ---
     public void saveFriendRequest(FriendRequest r) {
         friendRequestsById.put(r.getRequestId(), r);
         friendRequestBetweenIndex.put(
@@ -165,13 +169,13 @@ public enum DataStore {
         return a.compareTo(b) <= 0 ? a + "|" + b : b + "|" + a;
     }
 
-    
+    // --- Session ---
     public User getCurrentUser()       { return currentUser; }
     public void setCurrentUser(User u) { this.currentUser = u; }
     public void clearSession()         { this.currentUser = null; }
     public boolean isLoggedIn()        { return currentUser != null; }
 
-    
+    /** Package-private: test harness hook. */
     synchronized void resetForTests() {
         usersById.clear();
         usernameIndex.clear();
@@ -187,13 +191,15 @@ public enum DataStore {
         com.eventorganizer.utils.IdGenerator.resetForTests();
     }
 
-    
+    /** Mark the store as already-seeded — used by {@link Persistence#load} so the demo seed doesn't overwrite restored data. */
     public synchronized void markSeeded() {
         this.seeded = true;
     }
 
     public synchronized void seed() {
         if (seeded) return;
+        // If a previous run's data was loaded, getAllUsers() will be non-empty;
+        // skip the demo seed in that case.
         if (!usersById.isEmpty()) { seeded = true; return; }
         seeded = true;
 
@@ -213,7 +219,7 @@ public enum DataStore {
         User previousSession = currentUser;
         LocalDateTime now = LocalDateTime.now(clock);
 
-        /* adding some activity */
+        // Alice creates her two events.
         setCurrentUser(alice);
         Event meetup = es.createEvent("Community Meetup",
             "Open to all - come meet your neighbors.",
@@ -225,10 +231,10 @@ public enum DataStore {
             now.plusDays(14),
             "Alice's Home",
             EventType.PRIVATE);
-        
+        // Alice invites bob to her private housewarming (pending invite for bob).
         is.inviteFriend(housewarming.getEventId(), "bob");
 
-        
+        // Bob creates a public event and invites alice.
         setCurrentUser(bob);
         Event gameNight = es.createEvent("Board Game Night",
             "Casual games and snacks - open to friends.",
@@ -237,15 +243,15 @@ public enum DataStore {
             EventType.PUBLIC);
         is.inviteFriend(gameNight.getEventId(), "alice");
 
-        
+        // Alice accepts bob's invitation (gives bob an RSVP notification).
         setCurrentUser(alice);
         rs.respond(gameNight.getEventId(), RSVPStatus.ACCEPTED);
 
-       
+        // Carol sends alice a pending friend request.
         setCurrentUser(carol);
         fs.sendFriendRequest("alice");
 
-        
+        // Alice's meetup is also public; invite carol so Discover shows content for her too.
         setCurrentUser(alice);
         is.inviteFriend(meetup.getEventId(), "carol");
 
