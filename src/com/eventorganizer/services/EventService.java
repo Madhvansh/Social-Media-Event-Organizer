@@ -127,11 +127,15 @@ public class EventService {
         return e;
     }
 
+    /** Cancels an active event. Already-cancelled events are a silent no-op (idempotent). */
     public void cancelEvent(String eventId) {
         cancelEvent(eventId, null);
     }
 
-    /* with message */
+    /**
+     * Cancels an active event, threading an optional reason into the notification message.
+     * Already-cancelled events are a silent no-op (idempotent).
+     */
     public void cancelEvent(String eventId, String reason) {
         Validator.requireNonBlank(eventId, "eventId");
         User current = requireLoggedIn();
@@ -188,6 +192,11 @@ public class EventService {
         return list;
     }
 
+    /**
+     * Public events browsable by the current user — every active, upcoming
+     * {@link PublicEvent} they did not create. Per the Q7 spec, public events
+     * are visible to all users (not just those explicitly invited).
+     */
     public List<Event> discoverPublicEvents() {
         User current = requireLoggedIn();
         DataStore ds = DataStore.INSTANCE;
